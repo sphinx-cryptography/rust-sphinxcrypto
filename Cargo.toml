@@ -1,0 +1,19 @@
+[package]
+name = "sphinxcrypto"
+version = "0.0.1"
+authors = ["David Stainton <dstainton415@gmail.com>", "Jeffrey Burdges <burdges@gnunet.org>"]
+description = "Sphinx mixnet packet cryptography"
+homepage = "https://github.com/applied-mixnetworks/rust-sphinxcrypto"
+repository = "https://github.com/applied-mixnetworks/rust-sphinxcrypto"
+documentation = "https://docs.rs/sphinxcrypto/"
+readme = "README.rst"
+keywords = ["cryptography", "sphinx", "mixnet", "crypto", "mix"]
+license = "MIT"
+
+[dependencies]
+rust-crypto = "^0.2"
+arrayref = "^0.3"
+
+[dev-dependencies]
+rand = "^0.3"
+rustc-serialize = "0.3"
