@@ -61,6 +61,6 @@ mod tests {
         let keys: &[&[u8]] = &[s1, s2];
         let fu = group.multi_exp_on(&generator, &keys);
 
-        assert!(fu == exp1);
+        assert_eq!(fu, exp1);
     }
 }
