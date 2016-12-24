@@ -25,7 +25,7 @@ impl GroupCurve25519 {
     /// Perform scalar multiplication on curve25519
     pub fn exp_on(self, base: &[u8; CURVE25519_SIZE], n: &[u8]) -> [u8; CURVE25519_SIZE] {
 /*
-Already happens in curve25519 itself
+Already  done in curve25519
         let mut e = [0u8; 32];
         for (d,s) in e.iter_mut().zip(n.iter()) {
             *d = *s;
@@ -58,10 +58,10 @@ mod tests {
 
         let group = GroupCurve25519::new();
         let generator = group.g;
-        let exp1 = group.exp_on(generator.as_ref(), curve1.as_slice().as_ref());
-        let exp1 = group.exp_on(exp1.as_ref(), curve2.as_slice().as_ref());
-        let exp2 = group.exp_on(generator.as_ref(), curve2.as_slice().as_ref());
-        let exp2 = group.exp_on(exp2.as_ref(), curve1.as_slice().as_ref());
+        let exp1 = group.exp_on(&generator, curve1.as_slice().as_ref());
+        let exp1 = group.exp_on(&exp1, curve2.as_slice().as_ref());
+        let exp2 = group.exp_on(&generator, curve2.as_slice().as_ref());
+        let exp2 = group.exp_on(&exp2, curve1.as_slice().as_ref());
 
         assert!(exp1 == exp2);
         let want = "84b87479a6036249a18ef279b73db5a4811f641c50337ae3f21fb0be43cc8040".from_hex().unwrap();
@@ -70,6 +70,6 @@ mod tests {
         let s1 = exp1.as_ref();
         let s2 = exp2.as_ref();
         let keys: &[&[u8]] = &[s1, s2];
-        let fu = group.multi_exp_on(generator.as_ref(), &keys);
+        let fu = group.multi_exp_on(&generator, &keys);
     }
 }
