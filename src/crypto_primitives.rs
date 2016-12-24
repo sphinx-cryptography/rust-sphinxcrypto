@@ -24,22 +24,11 @@ impl GroupCurve25519 {
 
     /// Perform scalar multiplication on curve25519
     pub fn exp_on(self, base: &[u8; CURVE25519_SIZE], n: &[u8]) -> [u8; CURVE25519_SIZE] {
-/*
-Already  done in curve25519
-        let mut e = [0u8; 32];
-        for (d,s) in e.iter_mut().zip(n.iter()) {
-            *d = *s;
-        }
-        e[0] &= 248;
-        e[31] &= 127;
-        e[31] |= 64;
-*/
         curve25519(n, base)
     }
 
-    /// Perform accumulated multiplication for each scalar
+    /// Perform accumulating multiplication for each scalar
     pub fn multi_exp_on(self, base: &[u8; CURVE25519_SIZE], n: &[&[u8]]) -> [u8; CURVE25519_SIZE] {
-        let b = base;
         n.iter().fold(*base, |acc, x| curve25519(&acc, x))
     }
 }
@@ -71,5 +60,7 @@ mod tests {
         let s2 = exp2.as_ref();
         let keys: &[&[u8]] = &[s1, s2];
         let fu = group.multi_exp_on(&generator, &keys);
+
+        assert!(fu == exp1);
     }
 }
