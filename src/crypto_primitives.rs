@@ -4,9 +4,12 @@
 
 extern crate crypto;
 
-use crypto::curve25519::{curve25519};
+use crypto::blake2b::Blake2b;
+use crypto::digest::Digest;
+use crypto::curve25519::curve25519;
 
 pub const CURVE25519_SIZE: usize = 32;
+pub const HASH_REPLAY_PREFIX: u8 = 0x55;
 
 /// Group operations in the curve25519
 #[derive(Clone, Copy)]
@@ -28,9 +31,40 @@ impl GroupCurve25519 {
     }
 
     /// Perform accumulating multiplication for each scalar
-    /// curve25519 function signature --> pub fn curve25519(n: &[u8], p: &[u8]) -> [u8; 32]
     pub fn multi_exp_on(self, base: &[u8; CURVE25519_SIZE], n: &[&[u8]]) -> [u8; CURVE25519_SIZE] {
         n.iter().fold(*base, |acc, x| curve25519(x, &acc))
+    }
+}
+
+pub struct SphinxDigest {
+    digest: Blake2b,
+}
+
+impl SphinxDigest {
+    pub fn new() -> SphinxDigest {
+        SphinxDigest {
+            digest: Blake2b::new(32),
+        }
+    }
+
+    pub fn hash(&mut self, input: &[u8]) -> [u8; 32] {
+        self.digest.input(input);
+        let mut out = [0u8; 32];
+        self.digest.result(&mut out);
+        out
+    }
+
+    pub fn hash_replay(&mut self, input: &[u8]) -> [u8; 32] {
+        let mut x = [0u8; 33];
+        x[0] = HASH_REPLAY_PREFIX;
+        let (mut head, mut tail) = array_refs![&mut x, 1, 32];
+        for (v, h) in tail.iter_mut().zip(input.iter()) {
+            *v = *h;
+        }
+        self.digest.input(&x);
+        let mut out = [0u8; 32];
+        self.digest.result(&mut out);
+        out
     }
 }
 
@@ -38,7 +72,6 @@ impl GroupCurve25519 {
 mod tests {
     extern crate rustc_serialize;
     use super::*;
-    //use self::rustc_serialize::hex::{FromHex,ToHex};
     use self::rustc_serialize::hex::FromHex;
 
     #[test]
