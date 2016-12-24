@@ -33,6 +33,12 @@ impl GroupCurve25519 {
         e[31] |= 64;
         curve25519(e.as_ref(), base.as_ref())
     }
+
+    /// Perform accumulated multiplication for each scalar
+    pub fn multi_exp_on(self, base: &[u8], n: &[&[u8]]) -> [u8; CURVE25519_SIZE] {
+        let b = base;
+        n.iter().fold(b, |acc, x| self.exp_on(acc, x))
+    }
 }
 
 #[cfg(test)]
@@ -57,5 +63,10 @@ mod tests {
         assert!(exp1 == exp2);
         let want = "84b87479a6036249a18ef279b73db5a4811f641c50337ae3f21fb0be43cc8040".from_hex().unwrap();
         assert!(exp1 == want.as_slice());
+
+        let s1 = exp1.as_ref();
+        let s2 = exp2.as_ref();
+        let keys: &[&[u8]] = &[s1, s2];
+        let fu = group.multi_exp_on(generator.as_ref(), &keys);
     }
 }
