@@ -11,13 +11,13 @@ pub const CURVE25519_SIZE: usize = 32;
 /// Group operations in the curve25519
 #[derive(Clone, Copy)]
 pub struct GroupCurve25519 {
-    g: [u8; CURVE25519_SIZE],
+    _g: [u8; CURVE25519_SIZE],
 }
 
 impl GroupCurve25519 {
     pub fn new() -> GroupCurve25519 {
         GroupCurve25519 {
-            g: [9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            _g: [9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         }
     }
@@ -28,7 +28,6 @@ impl GroupCurve25519 {
     }
 
     /// Perform accumulating multiplication for each scalar
-    /// curve25519 function signature --> pub fn curve25519(n: &[u8], p: &[u8]) -> [u8; 32]
     pub fn multi_exp_on(self, base: &[u8; CURVE25519_SIZE], n: &[&[u8]]) -> [u8; CURVE25519_SIZE] {
         n.iter().fold(*base, |acc, x| curve25519(x, &acc))
     }
@@ -47,7 +46,7 @@ mod tests {
         let curve2 = "4171bd9a48a58cf7579e9fa662fe0ac2acb8c6eed3056cd970fd35dd4d026cae".from_hex().unwrap();
 
         let group = GroupCurve25519::new();
-        let generator = group.g;
+        let generator = group._g;
         let exp1 = group.exp_on(&generator, &curve1);
         let exp1 = group.exp_on(&exp1, &curve2);
         let exp2 = group.exp_on(&generator, &curve2);
