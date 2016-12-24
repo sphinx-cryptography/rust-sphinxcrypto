@@ -23,4 +23,4 @@ rust crate providing Sphinx mix network cryptography
 license
 =======
 
-MIC License
+MIT License
