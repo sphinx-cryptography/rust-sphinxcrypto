@@ -15,6 +15,7 @@ pub struct GroupCurve25519 {
 }
 
 impl GroupCurve25519 {
+    /// return a new GroupCurve25519 struct
     pub fn new() -> GroupCurve25519 {
         GroupCurve25519 {
             _g: [9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -30,6 +31,18 @@ impl GroupCurve25519 {
     /// Perform accumulating multiplication for each scalar
     pub fn multi_exp_on(self, base: &[u8; CURVE25519_SIZE], n: &[&[u8]]) -> [u8; CURVE25519_SIZE] {
         n.iter().fold(*base, |acc, x| curve25519(x, &acc))
+    }
+
+    /// flip some bits
+    pub fn make_exp(n: &[u8; CURVE25519_SIZE]) -> [u8; CURVE25519_SIZE] {
+        let mut ret = [0u8; CURVE25519_SIZE];
+        for (l, r) in ret.iter_mut().zip(n.iter()) {
+            *l = *r;
+        }
+        ret[0] &= 248;
+        ret[31] &= 127;
+        ret[31] |= 64;
+        ret
     }
 }
 
