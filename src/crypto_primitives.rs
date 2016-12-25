@@ -2,11 +2,15 @@
 
 //! Sphinx crypto primitives
 
+extern crate lioness;
 extern crate crypto;
 
+use self::lioness::{Lioness, RAW_KEY_SIZE};
+use crypto::chacha20::ChaCha20;
 use crypto::blake2b::Blake2b;
 use crypto::digest::Digest;
 use crypto::curve25519::curve25519;
+use crypto::symmetriccipher::SynchronousStreamCipher;
 
 pub const CURVE25519_SIZE: usize = 32;
 pub const HASH_REPLAY_PREFIX: u8 = 0x55;
@@ -50,6 +54,53 @@ impl GroupCurve25519 {
         ret[31] &= 127;
         ret[31] |= 64;
         ret
+    }
+}
+
+pub struct SphinxStreamCipher {
+
+}
+
+impl SphinxStreamCipher {
+    pub fn new() -> SphinxStreamCipher {
+        SphinxStreamCipher {
+        }
+    }
+
+    /// given a key generate a stream of length n
+    pub fn generate_stream<'a>(key: &[u8; 32], n: usize) -> &'a[u8] {
+        let nonce = [0u8; 8];
+        let mut cipher = ChaCha20::new(key, &nonce);
+        let mut zeros = vec![0u8; n];
+        let mut output = vec![0u8; n];
+        cipher.process(zeros.as_slice(), output.as_mut_slice());
+        output.as_slice()
+    }
+}
+
+pub struct SphinxLionessBlockCipher {
+
+}
+
+impl SphinxLionessBlockCipher {
+    /// return a new SphinxLionessBlockCipher struct
+    pub fn new() -> SphinxLionessBlockCipher {
+        SphinxLionessBlockCipher {
+        }
+    }
+
+    /// given a 32 byte secret, derive a key suitable for use with our wide block cipher
+    pub fn derive_key(secret: &[u8; CURVE25519_SIZE]) -> [u8; RAW_KEY_SIZE] {
+        let mut ret = [0u8; RAW_KEY_SIZE];
+        ret
+    }
+
+    /// encrypt a block
+    pub fn encrypt() {
+    }
+
+    /// decrypt a block
+    pub fn decrypt() {
     }
 }
 
