@@ -2,9 +2,10 @@
 
 //! Sphinx mixnet packet crypto
 
+extern crate crypto;
+
 #[macro_use]
 extern crate arrayref;
-extern crate crypto;
 
 pub mod crypto_primitives;
 pub use crypto_primitives::GroupCurve25519;

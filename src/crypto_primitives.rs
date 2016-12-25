@@ -58,7 +58,7 @@ impl SphinxDigest {
         let mut x = [0u8; 33];
         x[0] = HASH_REPLAY_PREFIX;
         {
-            let (mut head, mut tail) = array_refs![&mut x, 1, 32];
+            let (mut head, mut tail) = mut_array_refs![&mut x, 1, 32];
             for (v, h) in tail.iter_mut().zip(input.iter()) {
                 *v = *h;
             }
