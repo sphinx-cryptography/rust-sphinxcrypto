@@ -57,17 +57,20 @@ impl GroupCurve25519 {
     }
 }
 
+/// stream cipher for sphinx crypto usage
 pub struct SphinxStreamCipher {
 
 }
 
 impl SphinxStreamCipher {
+
+    /// create a new SphinxStreamCipher struct
     pub fn new() -> SphinxStreamCipher {
         SphinxStreamCipher {
         }
     }
 
-    /// given a key generate a stream of length n
+    /// given a key return a cipher stream of length n
     pub fn generate_stream<'a>(key: &[u8; 32], n: usize) -> &'a[u8] {
         let nonce = [0u8; 8];
         let mut cipher = ChaCha20::new(key, &nonce);
@@ -78,11 +81,15 @@ impl SphinxStreamCipher {
     }
 }
 
+/// A sphinx has the body of a lion. That is, the body of a sphinx packet
+/// is encrypted with the Lioness wide-block cipher. Since the Lioness keys
+/// are so huge (192 bytes) we use a stream cipher in our key derivation function.
 pub struct SphinxLionessBlockCipher {
 
 }
 
 impl SphinxLionessBlockCipher {
+
     /// return a new SphinxLionessBlockCipher struct
     pub fn new() -> SphinxLionessBlockCipher {
         SphinxLionessBlockCipher {
