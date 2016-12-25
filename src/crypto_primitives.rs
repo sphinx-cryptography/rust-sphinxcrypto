@@ -55,25 +55,11 @@ impl SphinxDigest {
     }
 
     pub fn hash_replay(&mut self, input: &[u8]) -> [u8; 32] {
-        let mut x = [0u8; 33];
-        x[0] = HASH_REPLAY_PREFIX;
-        {
-            let (mut head, mut tail) = mut_array_refs![&mut x, 1, 32];
-            for (v, h) in tail.iter_mut().zip(input.iter()) {
-                *v = *h;
-            }
-        }
-        self.digest.input(&x);
-        let mut out = [0u8; 32];
-        self.digest.result(&mut out);
-        out
-    }
-
-    pub fn alt_hash_replay(&mut self, input: &[u8]) -> [u8; 32] {
         self.digest.input(&[HASH_REPLAY_PREFIX]);
         self.digest.input(input);
         let mut out = [0u8; 32];
         self.digest.result(&mut out);
+        self.digest.reset();
         out
     }
 }
@@ -83,6 +69,7 @@ mod tests {
     extern crate rustc_serialize;
     use super::*;
     use self::rustc_serialize::hex::FromHex;
+
 
     #[test]
     fn commutativity_test() {
