@@ -68,6 +68,14 @@ impl SphinxDigest {
         self.digest.result(&mut out);
         out
     }
+
+    pub fn alt_hash_replay(&mut self, input: &[u8]) -> [u8; 32] {
+        self.digest.input(&[HASH_REPLAY_PREFIX]);
+        self.digest.input(input);
+        let mut out = [0u8; 32];
+        self.digest.result(&mut out);
+        out
+    }
 }
 
 #[cfg(test)]
