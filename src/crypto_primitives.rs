@@ -11,6 +11,7 @@ use crypto::blake2b::Blake2b;
 use crypto::digest::Digest;
 use crypto::curve25519::curve25519;
 use crypto::symmetriccipher::SynchronousStreamCipher;
+use std::vec::Vec;
 
 pub const CURVE25519_SIZE: usize = 32;
 pub const HASH_REPLAY_PREFIX: u8 = 0x55;
@@ -57,7 +58,12 @@ impl GroupCurve25519 {
     }
 }
 
+pub struct StreamKey {
+    material: Vec<u8>,
+}
+
 /// stream cipher for sphinx crypto usage
+#[derive(Clone, Copy)]
 pub struct SphinxStreamCipher {
 
 }
@@ -71,21 +77,26 @@ impl SphinxStreamCipher {
     }
 
     /// given a key return a cipher stream of length n
-    pub fn generate_stream<'a>(key: &[u8; 32], n: usize) -> &'a[u8] {
+    pub fn generate_stream(self, key: StreamKey, n: usize) -> Vec<u8> {
         let nonce = [0u8; 8];
-        let mut cipher = ChaCha20::new(key, &nonce);
-        let mut zeros = vec![0u8; n];
+        let mut cipher = ChaCha20::new(key.material.as_slice(), &nonce);
+        let zeros = vec![0u8; n];
         let mut output = vec![0u8; n];
         cipher.process(zeros.as_slice(), output.as_mut_slice());
-        output.as_slice()
+        output
     }
+}
+
+pub struct LionessKey {
+    material: Vec<u8>,
 }
 
 /// A sphinx has the body of a lion. That is, the body of a sphinx packet
 /// is encrypted with the Lioness wide-block cipher. Since the Lioness keys
 /// are so huge (192 bytes) we use a stream cipher in our key derivation function.
 pub struct SphinxLionessBlockCipher {
-
+    stream_cipher: SphinxStreamCipher,
+    digest: SphinxDigest,
 }
 
 impl SphinxLionessBlockCipher {
@@ -93,21 +104,29 @@ impl SphinxLionessBlockCipher {
     /// return a new SphinxLionessBlockCipher struct
     pub fn new() -> SphinxLionessBlockCipher {
         SphinxLionessBlockCipher {
+            stream_cipher: SphinxStreamCipher::new(),
+            digest: SphinxDigest::new(),
         }
     }
 
     /// given a 32 byte secret, derive a key suitable for use with our wide block cipher
-    pub fn derive_key(secret: &[u8; CURVE25519_SIZE]) -> [u8; RAW_KEY_SIZE] {
-        let mut ret = [0u8; RAW_KEY_SIZE];
-        ret
+    pub fn derive_key(&mut self, secret: &[u8]) -> LionessKey {
+        let stream_key = self.digest.derive_stream_cipher_key(secret);
+        LionessKey{
+            material: self.stream_cipher.generate_stream(stream_key, RAW_KEY_SIZE),
+        }
     }
 
     /// encrypt a block
-    pub fn encrypt() {
+    pub fn encrypt(self, key: LionessKey, block: &mut [u8]) {
+        let cipher = Lioness::<Blake2b,ChaCha20>::new_raw(array_ref!(key.material.as_slice(), 0, RAW_KEY_SIZE));
+        cipher.encrypt(block).unwrap();
     }
 
     /// decrypt a block
-    pub fn decrypt() {
+    pub fn decrypt(self, key: LionessKey, block: &mut [u8]) {
+        let cipher = Lioness::<Blake2b,ChaCha20>::new_raw(array_ref!(key.material.as_slice(), 0, RAW_KEY_SIZE));
+        cipher.decrypt(block).unwrap();
     }
 }
 
@@ -153,13 +172,16 @@ impl SphinxDigest {
     }
 
     /// Derive a stream cipher key
-    pub fn derive_stream_cipher_key(&mut self, secret: &[u8]) -> [u8; 32] {
+    pub fn derive_stream_cipher_key(&mut self, secret: &[u8]) -> StreamKey {
+        assert!(secret.len() == 32);
         self.digest.input(&[HASH_STREAM_KEY_PREFIX]);
         self.digest.input(secret);
         let mut out = [0u8; 32];
         self.digest.result(&mut out);
         self.digest.reset();
-        out
+        StreamKey{
+            material: out.to_vec(),
+        }
     }
 
     /// Derive an HMAC key
@@ -188,6 +210,32 @@ mod tests {
     use super::*;
     use self::rustc_serialize::hex::FromHex;
     //use self::rustc_serialize::hex::{FromHex, ToHex};
+
+    #[test]
+    fn block_cipher_test() {
+        let mut cipher = SphinxLionessBlockCipher::new();
+        let secret = "82c8ad63392a5f59347b043e1244e68d52eb853921e2656f188d33e59a1410b4".from_hex().unwrap();
+        let lioness_key = cipher.derive_key(secret.as_slice());
+        let want = "c26abe4b265a2c8883961ee0c811e000c4161a5ab9674aa910cdcc4ffaa4c7561cb1efe443c530b7acf8c2b64f20b9f2a2b1c895d1f26529c77ba4df1683232cdc0b4ec48d07fd3749e750f276b006e047c65b9e006ba298c832edc56a1bf4d8d630ad2f7f61bfc12bca0ecbcb4a89b5a76c720d6276dd6cdbfd2798430d3d196eab45dabeabf0286c347ed30a9f8a13e28f6333ea77f05542922e357948e386ad92583f65b7269dfdfc469eba3cfa1adbec93a657eb5796c7080d85a5c9ccde".from_hex().unwrap();
+        assert!(lioness_key.material == want);
+
+        let mut block = "8e295c33753c49121b3d4e8508a3f796079600df41a1401542d2346f32c0813082b2bef9059128e3da9a6bd73da43a44daa54171bd9a48a58cf7579e9fa662fe0ac2acb8c6eed3056cd970fd35dd4d026cae".from_hex().unwrap();
+        cipher.encrypt(lioness_key, block.as_mut_slice());
+        let want_ciphertext = "31d8bc5ab4dc98c39d5371eb1431fc755d8d6b2e3a223878a685a57a77c941129a5a35e13e5db95541080435b33b30d845bdaa1d4292d3efda156abd816c9fce8ae764a0e99ddc1ed145f78a47ec53892e3b".from_hex().unwrap();
+        assert!(block.to_vec() == want_ciphertext);
+    }
+
+    #[test]
+    fn stream_cipher_test() {
+        let cipher = SphinxStreamCipher::new();
+        let key = "82c8ad63392a5f59347b043e1244e68d52eb853921e2656f188d33e59a1410b4".from_hex().unwrap();
+        let stream_key = StreamKey{
+            material: key.to_vec(),
+        };
+        let stream = cipher.generate_stream(stream_key, 50);
+        let want = "8e295c33753c49121b3d4e8508a3f796079600df41a1401542d2346f32c0813082b2bef9059128e3da9a6bd73da43a44daa5".from_hex().unwrap();
+        assert!(stream == want)
+    }
 
     #[test]
     fn derive_hmac_key_test() {
