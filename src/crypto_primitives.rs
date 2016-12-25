@@ -53,6 +53,7 @@ impl GroupCurve25519 {
     }
 }
 
+/// Various digest operations specific to sphinx crypto
 pub struct SphinxDigest {
     digest: Blake2b,
 }
@@ -64,6 +65,7 @@ impl SphinxDigest {
         }
     }
 
+    /// Produce 32 byte hash output
     pub fn hash(&mut self, input: &[u8]) -> [u8; 32] {
         self.digest.input(input);
         let mut out = [0u8; 32];
@@ -71,6 +73,7 @@ impl SphinxDigest {
         out
     }
 
+    /// Produce prefixed hash output used to detect mixnet replay attacks
     pub fn hash_replay(&mut self, input: &[u8]) -> [u8; 32] {
         self.digest.input(&[HASH_REPLAY_PREFIX]);
         self.digest.input(input);
@@ -80,6 +83,7 @@ impl SphinxDigest {
         out
     }
 
+    /// Produce prefixed hash output used to derive a blinding factor
     pub fn hash_blinding(&mut self, public_key: &[u8], private_key: &[u8]) -> [u8; 32] {
         self.digest.input(&[HASH_BLINDING_PREFIX]);
         self.digest.input(public_key);
@@ -90,6 +94,7 @@ impl SphinxDigest {
         out
     }
 
+    /// Derive a stream cipher key
     pub fn derive_stream_cipher_key(&mut self, secret: &[u8]) -> [u8; 32] {
         self.digest.input(&[HASH_STREAM_KEY_PREFIX]);
         self.digest.input(secret);
@@ -99,6 +104,7 @@ impl SphinxDigest {
         out
     }
 
+    /// Derive an HMAC key
     pub fn derive_hmac_key(&mut self, secret: &[u8]) -> [u8; 16] {
         let mut digest = Blake2b::new(16);
         digest.input(&[HASH_HMAC_KEY_PREFIX]);
@@ -108,6 +114,7 @@ impl SphinxDigest {
         out
     }
 
+    /// Perform an HMAC on the given data
     pub fn hmac(&mut self, key: &[u8; 16], data: &[u8]) -> [u8; 16] {
         let mut m = Blake2b::new_keyed(16, &key[..]);
         m.input(data);
