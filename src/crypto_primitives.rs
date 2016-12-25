@@ -12,6 +12,7 @@ pub const CURVE25519_SIZE: usize = 32;
 pub const HASH_REPLAY_PREFIX: u8 = 0x55;
 pub const HASH_BLINDING_PREFIX: u8 = 0x11;
 pub const HASH_STREAM_KEY_PREFIX: u8 = 0x22;
+pub const HASH_HMAC_KEY_PREFIX: u8 = 0x33;
 
 
 /// Group operations in the curve25519
@@ -98,6 +99,22 @@ impl SphinxDigest {
         out
     }
 
+    pub fn derive_hmac_key(&mut self, secret: &[u8]) -> [u8; 16] {
+        let mut digest = Blake2b::new(16);
+        digest.input(&[HASH_HMAC_KEY_PREFIX]);
+        digest.input(secret);
+        let mut out = [0u8; 16];
+        digest.result(&mut out);
+        out
+    }
+
+    pub fn hmac(&mut self, key: &[u8; 16], data: &[u8]) -> [u8; 16] {
+        let mut m = Blake2b::new_keyed(16, &key[..]);
+        m.input(data);
+        let mut out = [0u8; 16];
+        m.result(&mut out);
+        out
+    }
 }
 
 #[cfg(test)]
@@ -105,7 +122,20 @@ mod tests {
     extern crate rustc_serialize;
     use super::*;
     use self::rustc_serialize::hex::FromHex;
+    //use self::rustc_serialize::hex::{FromHex, ToHex};
 
+    #[test]
+    fn derive_hmac_key_test() {
+        let mut digest = SphinxDigest::new();
+        let secret = "82c8ad63392a5f59347b043e1244e68d52eb853921e2656f188d33e59a1410b4".from_hex().unwrap();
+        let key = digest.derive_hmac_key(&secret);
+        let want_key = "eba2ad216a65c5230ad2018b4c536c45".from_hex().unwrap();
+        assert!(key == want_key.as_slice());
+        let data = "4171bd9a48a58cf7579e9fa662fe0ac2acb8c6eed3056cd970fd35dd4d026cae".from_hex().unwrap();
+        let mac = digest.hmac(&key, &data);
+        let want_mac = "77724528a77692be295f07bcfc8bd5eb".from_hex().unwrap();
+        assert!(mac == want_mac.as_slice());
+    }
 
     #[test]
     fn commutativity_test() {
