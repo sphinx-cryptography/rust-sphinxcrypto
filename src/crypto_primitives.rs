@@ -10,6 +10,9 @@ use crypto::curve25519::curve25519;
 
 pub const CURVE25519_SIZE: usize = 32;
 pub const HASH_REPLAY_PREFIX: u8 = 0x55;
+pub const HASH_BLINDING_PREFIX: u8 = 0x11;
+pub const HASH_STREAM_KEY_PREFIX: u8 = 0x22;
+
 
 /// Group operations in the curve25519
 #[derive(Clone, Copy)]
@@ -75,6 +78,26 @@ impl SphinxDigest {
         self.digest.reset();
         out
     }
+
+    pub fn hash_blinding(&mut self, public_key: &[u8], private_key: &[u8]) -> [u8; 32] {
+        self.digest.input(&[HASH_BLINDING_PREFIX]);
+        self.digest.input(public_key);
+        self.digest.input(private_key);
+        let mut out = [0u8; 32];
+        self.digest.result(&mut out);
+        self.digest.reset();
+        out
+    }
+
+    pub fn derive_stream_cipher_key(&mut self, secret: &[u8]) -> [u8; 32] {
+        self.digest.input(&[HASH_STREAM_KEY_PREFIX]);
+        self.digest.input(secret);
+        let mut out = [0u8; 32];
+        self.digest.result(&mut out);
+        self.digest.reset();
+        out
+    }
+
 }
 
 #[cfg(test)]
