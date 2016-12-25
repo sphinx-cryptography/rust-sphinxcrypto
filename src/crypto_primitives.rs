@@ -4,9 +4,12 @@
 
 extern crate crypto;
 
-use crypto::curve25519::{curve25519};
+use crypto::blake2b::Blake2b;
+use crypto::digest::Digest;
+use crypto::curve25519::curve25519;
 
 pub const CURVE25519_SIZE: usize = 32;
+pub const HASH_REPLAY_PREFIX: u8 = 0x55;
 
 /// Group operations in the curve25519
 #[derive(Clone, Copy)]
@@ -46,12 +49,40 @@ impl GroupCurve25519 {
     }
 }
 
+pub struct SphinxDigest {
+    digest: Blake2b,
+}
+
+impl SphinxDigest {
+    pub fn new() -> SphinxDigest {
+        SphinxDigest {
+            digest: Blake2b::new(32),
+        }
+    }
+
+    pub fn hash(&mut self, input: &[u8]) -> [u8; 32] {
+        self.digest.input(input);
+        let mut out = [0u8; 32];
+        self.digest.result(&mut out);
+        out
+    }
+
+    pub fn hash_replay(&mut self, input: &[u8]) -> [u8; 32] {
+        self.digest.input(&[HASH_REPLAY_PREFIX]);
+        self.digest.input(input);
+        let mut out = [0u8; 32];
+        self.digest.result(&mut out);
+        self.digest.reset();
+        out
+    }
+}
+
 #[cfg(test)]
 mod tests {
     extern crate rustc_serialize;
     use super::*;
-    //use self::rustc_serialize::hex::{FromHex,ToHex};
     use self::rustc_serialize::hex::FromHex;
+
 
     #[test]
     fn commutativity_test() {
