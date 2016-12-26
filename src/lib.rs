@@ -7,6 +7,7 @@ extern crate crypto;
 #[macro_use]
 extern crate arrayref;
 
+pub mod node;
 pub mod crypto_primitives;
 pub use crypto_primitives::GroupCurve25519;
 
