@@ -5,7 +5,8 @@
 extern crate lioness;
 
 use std::collections::HashMap;
-pub use crypto_primitives::{GroupCurve25519, SphinxDigest, SphinxLionessBlockCipher, SphinxStreamCipher, CURVE25519_SIZE};
+pub use crypto_primitives::{GroupCurve25519, SphinxDigest,
+                            SphinxLionessBlockCipher, SphinxStreamCipher, CURVE25519_SIZE};
 use self::lioness::xor;
 use std::error::Error;
 use std::fmt;
@@ -93,13 +94,14 @@ pub struct SphinxPacket {
 pub enum SphinxPacketError {
     ReplayAttack,
     InvalidHMAC,
-    InvalidMessageType,
+    InvalidMessage,
     InvalidClientHop,
     InvalidProcessHop,
 }
 
 /// UnwrappedPacketType represents one of three possible
 /// types of results
+#[derive(PartialEq)]
 pub enum UnwrappedPacketType {
     ClientHop,
     ProcessHop,
@@ -280,11 +282,15 @@ pub fn sphinx_packet_unwrap<S,C>(state: S, replay_cache: C, packet: SphinxPacket
     beta_copy.extend(padding.as_ref());
     xor(&stream, beta_copy.as_ref(), unwrapped_beta);
 
-    // prefix free decoding of unwrapped_beta
-    // match prefix_free_decode(unwrapped_beta) {
-    //     Ok(m) => ,
-    //     Err(e) => ,
-    // }
+    let beta_message: PrefixFreeDecodedMessage;
+    match prefix_free_decode(unwrapped_beta) {
+        Ok(m) => beta_message = m,
+        Err(e) => return Err(SphinxPacketError::InvalidMessage),
+    }
+    if beta_message.message_type == UnwrappedPacketType::MixHop {
+    } else if beta_message.message_type == UnwrappedPacketType::ClientHop {
+    } else if beta_message.message_type == UnwrappedPacketType::ProcessHop {
+    }
 
     // XXX fix me
     let client_id: [u8; 16] = [0; 16];
