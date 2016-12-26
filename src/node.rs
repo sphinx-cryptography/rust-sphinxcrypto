@@ -2,9 +2,19 @@
 
 //! Sphinx mix node cryptographic operations
 
-use std::collections::HashMap;
-pub use crypto_primitives::{GroupCurve25519, SphinxDigest, SphinxLionessBlockCipher};
+extern crate lioness;
 
+use std::collections::HashMap;
+pub use crypto_primitives::{GroupCurve25519, SphinxDigest, SphinxLionessBlockCipher, SphinxStreamCipher, CURVE25519_SIZE};
+use self::lioness::xor;
+
+/// The "security bits" expressed as bytes that Sphinx mix packet crypto provides,
+/// curve25519 uses a 256 bit key and provides 128 bits of security. Therefor the
+/// Sphinx digest and cipher stream functions are keyed with the 128 bits of security.
+pub const SECURITY_PARAMETER: usize = 16;
+/// The maximum number of hops a Sphinx packet may contain.
+pub const MAX_HOPS: usize = 5;
+const BETA_CIPHER_SIZE: usize = CURVE25519_SIZE + (2 * MAX_HOPS - 1) + (3 * SECURITY_PARAMETER);
 
 /// This trait is used to detect mix packet replay attacks. A unique
 /// tag for each packet is remembered and if ever seen again implies a
@@ -146,11 +156,13 @@ impl SphinxMixState for VolatileMixState {
 /// * `packet` - a reference to a SphinxPacket
 ///
 /// # Errors
+///
 /// * `SphinxPacketError::ReplayAttack` - indicates a replay attack when a packet tag was found in the `replay_cache`
 /// * `SphinxPacketError::InvalidHMAC` - computed HMAC doesn't match the gamma element
 /// * `SphinxPacketError::InvalidMessageType` - prefix-free encoding error, invalid message type
 /// * `SphinxPacketError::InvalidClientHop` - invalid client hop
 /// * `SphinxPacketError::InvalidProcessHop` - invalid process hop
+///
 pub fn sphinx_packet_unwrap<S,C>(state: S, replay_cache: C, packet: SphinxPacket) -> Result<UnwrappedPacket, SphinxPacketError>
     where S: SphinxMixState,
           C: PacketReplayCache
@@ -191,6 +203,17 @@ pub fn sphinx_packet_unwrap<S,C>(state: S, replay_cache: C, packet: SphinxPacket
         gamma: vec![0;16],
         delta: block.to_vec(),
     };
+
+    // unwrap beta
+    let stream_key = digest.derive_stream_cipher_key(&shared_secret);
+    let stream_cipher = SphinxStreamCipher::new();
+    let stream = stream_cipher.generate_stream(stream_key, BETA_CIPHER_SIZE);
+    let mut unwrapped_beta = &mut [0u8; BETA_CIPHER_SIZE];
+    let padding = [0u8; 2*SECURITY_PARAMETER];
+    let mut beta_copy = packet.beta;
+    beta_copy.extend(padding.as_ref());
+    xor(&stream, beta_copy.as_ref(), unwrapped_beta);
+
 
     // XXX fix me
     let client_id: [u8; 16] = [0; 16];
