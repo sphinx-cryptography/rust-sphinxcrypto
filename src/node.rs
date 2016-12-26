@@ -3,7 +3,7 @@
 //! Sphinx mix node cryptographic operations
 
 use std::collections::HashMap;
-pub use crypto_primitives::GroupCurve25519;
+pub use crypto_primitives::{GroupCurve25519, SphinxDigest};
 
 
 /// This trait is used to detect mix packet replay attacks. A unique
@@ -164,11 +164,23 @@ pub fn sphinx_packet_unwrap<S,C>(state: S, replay_cache: C, packet: SphinxPacket
     let private_key = state.get_private_key();
     let shared_secret = group.exp_on(&alpha_array, private_key.as_ref());
 
-    // TODO:
     // derive HMAC key from shared secret
+    let mut digest = SphinxDigest::new();
+    let hmac_key = digest.derive_hmac_key(shared_secret.as_ref());
+
     // generate HMAC and check it against gamma
+    let mac = digest.hmac(&hmac_key, &packet.beta);
+    if packet.gamma != mac {
+        return Err(SphinxPacketError::InvalidHMAC)
+    }
+
     // check prefix hash against our replay cache
-    // unwrap sphinx packet
+    let tag = digest.hash_replay(&shared_secret);
+    if replay_cache.check(tag) {
+        return Err(SphinxPacketError::ReplayAttack)
+    }
+
+    // TODO unwrap sphinx packet
 
     // XXX fix me
     let client_id: [u8; 16] = [0; 16];
