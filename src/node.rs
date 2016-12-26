@@ -3,6 +3,7 @@
 //! Sphinx mix node cryptographic operations
 
 use std::collections::HashMap;
+pub use crypto_primitives::GroupCurve25519;
 
 
 /// This trait is used to detect mix packet replay attacks. A unique
@@ -150,13 +151,20 @@ impl SphinxMixState for VolatileMixState {
 /// * `SphinxPacketError::InvalidMessageType` - prefix-free encoding error, invalid message type
 /// * `SphinxPacketError::InvalidClientHop` - invalid client hop
 /// * `SphinxPacketError::InvalidProcessHop` - invalid process hop
-pub fn sphinx_packet_unwrap<S,C>(state: &S, replay_cache: &C, packet: SphinxPacket) -> Result<UnwrappedPacket, SphinxPacketError>
+pub fn sphinx_packet_unwrap<S,C>(state: S, replay_cache: C, packet: SphinxPacket) -> Result<UnwrappedPacket, SphinxPacketError>
     where S: SphinxMixState,
           C: PacketReplayCache
 {
+    // derive shared secret from alpha using our private key
+    let group = GroupCurve25519::new();
+    let mut alpha_array = [0u8; 32];
+    for (place, element) in alpha_array.iter_mut().zip(packet.alpha.iter()) {
+        *place = *element;
+    }
+    let private_key = state.get_private_key();
+    let shared_secret = group.exp_on(&alpha_array, private_key.as_ref());
 
     // TODO:
-    // derive shared secret from alpha using our private key
     // derive HMAC key from shared secret
     // generate HMAC and check it against gamma
     // check prefix hash against our replay cache
