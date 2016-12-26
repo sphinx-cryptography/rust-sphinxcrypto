@@ -9,7 +9,7 @@ use std::collections::HashMap;
 /// tag for each packet is remembered and if ever seen again implies a
 /// replay attack. Note that we can flush our cache upon mix node key
 /// rotation, which must happen fairly often.
-pub trait PacketReplayCheck {
+pub trait PacketReplayCache {
     /// returns true if we've seen a given tag before
     /// # Arguments
     /// * `tag` - a 32 byte value
@@ -38,15 +38,14 @@ impl VolatileReplayHashMap {
     }
 }
 
-impl PacketReplayCheck for VolatileReplayHashMap {
-
+impl PacketReplayCache for VolatileReplayHashMap {
     /// return true if the given tag is present in our HashMap
     ///
     /// # Arguments
     /// * `tag` - a 32 byte value
     fn check(&self, tag: [u8; 32]) -> bool {
         match self.map.get(&tag) {
-            Some(result) => return true,
+            Some(_) => return true,
             None => return false,
         }
     }
@@ -76,17 +75,51 @@ pub struct SphinxPacket {
     pub delta: Vec<u8>,
 }
 
-/// UnwrappedMessage is the result of a mix node unwrapping a Sphinx
-/// packet and can be in one of three possible states:
-///
-/// * contains sphinx packet for next mix hop
-/// * contains sphinx packet for client hop
-/// * contains plaintext for process hop
-pub struct UnwrappedMessage {}
+/// Errors that can be produced while unwrapping sphinx packets
+#[derive(Debug)]
+pub enum SphinxPacketError {
+    ReplayAttack,
+    InvalidHMAC,
+    InvalidMessageType,
+    InvalidClientHop,
+    InvalidProcessHop,
+}
 
-/// SphinxNodeState represents the Sphinx mix node's current
+/// UnwrappedPacketType represents one of three possible
+/// types of results
+pub enum UnwrappedPacketType {
+    Client,
+    Process,
+    NextHop,
+}
+
+/// UnwrappedPacket is the result of a mix node unwrapping a Sphinx packet.
+/// This of course results in yet another SphinxPacket, our `packet` member.
+pub struct UnwrappedPacket {
+    /// type of unwrapped-packet
+    pub result_type: UnwrappedPacketType,
+    /// next hop mix ID
+    pub next_mix_id: [u8; 16],
+    /// client ID
+    pub client_id: [u8; 16],
+    /// message ID
+    pub message_id: [u8; 16],
+    /// sphinx packet
+    pub packet: SphinxPacket,
+}
+
+/// sphinx mix node key material state.
+/// mix nodes only need their private key
+/// to perform packet unwrapping. However
+/// this private key is of course destroyed
+/// during key rotation.
+pub trait SphinxMixState {
+    fn get_private_key(self) -> [u8; 32];
+}
+
+/// this struct represents the Sphinx mix node's current
 /// key material state and node identification.
-pub struct SphinxNodeState {
+pub struct VolatileMixState {
     /// node identification
     pub id: [u8; 16],
     /// public key
@@ -95,20 +128,50 @@ pub struct SphinxNodeState {
     pub private_key: [u8; 32],
 }
 
-pub struct SphinxNode {}
-
-impl SphinxNode {
-    /// return a new SphinxNode struct
-    /// # Arguments
-    /// * `state` - a reference to a SphinxNodeState
-    pub fn new(state: &SphinxNodeState) -> SphinxNode {
-        SphinxNode{}
+impl SphinxMixState for VolatileMixState {
+    /// return the private key
+    fn get_private_key(self) -> [u8; 32] {
+        self.private_key
     }
+}
 
-    /// unwrap returns a new UnwrappedMessage given a SphinxPacket
-    /// # Arguments
-    /// * `packet` - a reference to a SphinxPacket
-    pub fn unwrap(packet: &SphinxPacket) -> UnwrappedMessage {
-        UnwrappedMessage{}
-    }
+/// unwrap a single layer of sphinx mix packet encryption
+/// and returns a Result of either UnwrappedPacket or SphinxPacketError
+///
+/// # Arguments
+///
+/// * `state` - an implementation of the SphinxMixState trait
+/// * `replay_cache` - an implementation of the PacketReplayCache trait
+/// * `packet` - a reference to a SphinxPacket
+///
+/// # Errors
+/// * `SphinxPacketError::ReplayAttack` - indicates a replay attack when a packet tag was found in the `replay_cache`
+/// * `SphinxPacketError::InvalidHMAC` - computed HMAC doesn't match the gamma element
+/// * `SphinxPacketError::InvalidMessageType` - prefix-free encoding error, invalid message type
+/// * `SphinxPacketError::InvalidClientHop` - invalid client hop
+/// * `SphinxPacketError::InvalidProcessHop` - invalid process hop
+pub fn sphinx_packet_unwrap<S,C>(state: &S, replay_cache: &C, packet: SphinxPacket) -> Result<UnwrappedPacket, SphinxPacketError>
+    where S: SphinxMixState,
+          C: PacketReplayCache
+{
+
+    // TODO:
+    // derive shared secret from alpha using our private key
+    // derive HMAC key from shared secret
+    // generate HMAC and check it against gamma
+    // check prefix hash against our replay cache
+    // unwrap sphinx packet
+
+    // XXX fix me
+    let client_id: [u8; 16] = [0; 16];
+    let next_mix_id: [u8; 16] = [0; 16];
+    let message_id: [u8; 16] = [0; 16];
+    let p = UnwrappedPacket{
+        result_type: UnwrappedPacketType::NextHop,
+        next_mix_id: next_mix_id,
+        client_id: client_id,
+        message_id: message_id,
+        packet: packet,
+    };
+    Ok(p)
 }
