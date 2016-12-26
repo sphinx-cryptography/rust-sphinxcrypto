@@ -7,6 +7,8 @@ extern crate lioness;
 use std::collections::HashMap;
 pub use crypto_primitives::{GroupCurve25519, SphinxDigest, SphinxLionessBlockCipher, SphinxStreamCipher, CURVE25519_SIZE};
 use self::lioness::xor;
+use std::error::Error;
+use std::fmt;
 
 /// The "security bits" expressed as bytes that Sphinx mix packet crypto provides,
 /// curve25519 uses a 256 bit key and provides 128 bits of security. Therefor the
@@ -99,10 +101,74 @@ pub enum SphinxPacketError {
 /// UnwrappedPacketType represents one of three possible
 /// types of results
 pub enum UnwrappedPacketType {
-    Client,
-    Process,
-    NextHop,
+    ClientHop,
+    ProcessHop,
+    MixHop,
 }
+
+#[derive(Debug)]
+pub enum PrefixFreeDecodeError {
+    ZeroInputError,
+    InvalidInputError,
+}
+
+impl fmt::Display for PrefixFreeDecodeError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::PrefixFreeDecodeError::*;
+        match *self {
+            InvalidInputError => write!(f, "Invalid prefix free decoding value."),
+            ZeroInputError => write!(f, "Invalid input, zero size."),
+        }
+    }
+}
+
+impl Error for PrefixFreeDecodeError {
+    fn description(&self) -> &str {
+        "I'm a prefix-free decoding error."
+    }
+
+    fn cause(&self) -> Option<&Error> {
+        use self::PrefixFreeDecodeError::*;
+        match *self {
+            InvalidInputError => None,
+            ZeroInputError => None,
+        }
+    }
+}
+
+pub struct PrefixFreeDecodedMessage {
+    message_type: UnwrappedPacketType,
+    value: Vec<u8>,
+    remainder: Vec<u8>,
+}
+
+pub fn prefix_free_decode(s: &[u8]) -> Result<PrefixFreeDecodedMessage, PrefixFreeDecodeError> {
+    let empty = Vec::new();
+    if s.len() == 0 {
+        return Err(PrefixFreeDecodeError::ZeroInputError)
+    }
+    if s[0] == 0x00 {
+        return Ok(PrefixFreeDecodedMessage{
+            message_type: UnwrappedPacketType::ProcessHop,
+            value: empty,
+            remainder: s[1..].as_ref().to_vec(),
+        })
+    } else if s[0] == 0xff {
+        return Ok(PrefixFreeDecodedMessage{
+            message_type: UnwrappedPacketType::MixHop,
+            value: s[0..SECURITY_PARAMETER].as_ref().to_vec(),
+            remainder: s[SECURITY_PARAMETER..].as_ref().to_vec(),
+        })
+    } else if s[0] < 128 {
+        return Ok(PrefixFreeDecodedMessage{
+            message_type: UnwrappedPacketType::ClientHop,
+            value: s[1..s[0] as usize +1].as_ref().to_vec(),
+            remainder: s[s[0] as usize +1..].as_ref().to_vec(),
+        })
+    }
+    return Err(PrefixFreeDecodeError::InvalidInputError)
+}
+
 
 /// UnwrappedPacket is the result of a mix node unwrapping a Sphinx packet.
 /// This of course results in yet another SphinxPacket, our `packet` member.
@@ -214,13 +280,18 @@ pub fn sphinx_packet_unwrap<S,C>(state: S, replay_cache: C, packet: SphinxPacket
     beta_copy.extend(padding.as_ref());
     xor(&stream, beta_copy.as_ref(), unwrapped_beta);
 
+    // prefix free decoding of unwrapped_beta
+    // match prefix_free_decode(unwrapped_beta) {
+    //     Ok(m) => ,
+    //     Err(e) => ,
+    // }
 
     // XXX fix me
     let client_id: [u8; 16] = [0; 16];
     let next_mix_id: [u8; 16] = [0; 16];
     let message_id: [u8; 16] = [0; 16];
     let p = UnwrappedPacket{
-        result_type: UnwrappedPacketType::NextHop,
+        result_type: UnwrappedPacketType::MixHop,
         next_mix_id: next_mix_id,
         client_id: client_id,
         message_id: message_id,
