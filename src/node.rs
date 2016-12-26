@@ -10,7 +10,6 @@ use std::collections::HashMap;
 /// replay attack. Note that we can flush our cache upon mix node key
 /// rotation, which must happen fairly often.
 pub trait PacketReplayCheck {
-
     /// returns true if we've seen a given tag before
     /// # Arguments
     /// * `tag` - a 32 byte value
@@ -77,21 +76,38 @@ pub struct SphinxPacket {
     pub delta: Vec<u8>,
 }
 
+/// UnwrappedMessage is the result of a mix node unwrapping a Sphinx
+/// packet and can be in one of three possible states:
+///
+/// * contains sphinx packet for next mix hop
+/// * contains sphinx packet for client hop
+/// * contains plaintext for process hop
 pub struct UnwrappedMessage {}
 
+/// SphinxNodeState represents the Sphinx mix node's current
+/// key material state and node identification.
 pub struct SphinxNodeState {
-    private_key: [u8; 32],
-    public_key: [u8; 32],
-    id: [u8; 16],
+    /// node identification
+    pub id: [u8; 16],
+    /// public key
+    pub public_key: [u8; 32],
+    /// private key
+    pub private_key: [u8; 32],
 }
 
 pub struct SphinxNode {}
 
 impl SphinxNode {
-    pub fn new() -> SphinxNode {
+    /// return a new SphinxNode struct
+    /// # Arguments
+    /// * `state` - a reference to a SphinxNodeState
+    pub fn new(state: &SphinxNodeState) -> SphinxNode {
         SphinxNode{}
     }
 
+    /// unwrap returns a new UnwrappedMessage given a SphinxPacket
+    /// # Arguments
+    /// * `packet` - a reference to a SphinxPacket
     pub fn unwrap(packet: &SphinxPacket) -> UnwrappedMessage {
         UnwrappedMessage{}
     }
