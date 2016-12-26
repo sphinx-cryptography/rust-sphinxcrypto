@@ -3,7 +3,7 @@
 //! Sphinx mix node cryptographic operations
 
 use std::collections::HashMap;
-pub use crypto_primitives::{GroupCurve25519, SphinxDigest};
+pub use crypto_primitives::{GroupCurve25519, SphinxDigest, SphinxLionessBlockCipher};
 
 
 /// This trait is used to detect mix packet replay attacks. A unique
@@ -180,7 +180,17 @@ pub fn sphinx_packet_unwrap<S,C>(state: S, replay_cache: C, packet: SphinxPacket
         return Err(SphinxPacketError::ReplayAttack)
     }
 
-    // TODO unwrap sphinx packet
+    // unwrap body, lioness decrypt block
+    let mut block_cipher = SphinxLionessBlockCipher::new();
+    let block_cipher_key = block_cipher.derive_key(&shared_secret);
+    let mut block = packet.delta.clone();
+    block_cipher.decrypt(block_cipher_key, block.as_mut_slice());
+    let new_packet = SphinxPacket {
+        alpha: vec![0;32],
+        beta: vec![0;192],
+        gamma: vec![0;16],
+        delta: block.to_vec(),
+    };
 
     // XXX fix me
     let client_id: [u8; 16] = [0; 16];
@@ -191,7 +201,7 @@ pub fn sphinx_packet_unwrap<S,C>(state: S, replay_cache: C, packet: SphinxPacket
         next_mix_id: next_mix_id,
         client_id: client_id,
         message_id: message_id,
-        packet: packet,
+        packet: new_packet,
     };
     Ok(p)
 }
