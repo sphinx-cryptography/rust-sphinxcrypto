@@ -105,7 +105,7 @@ impl SphinxLionessBlockCipher {
     }
 
     /// given a 32 byte secret, derive a key suitable for use with our wide block cipher
-    pub fn derive_key(&mut self, secret: &[u8]) -> LionessKey {
+    pub fn derive_key(&mut self, secret: &[u8; 32]) -> LionessKey {
         let stream_key = self.digest.derive_stream_cipher_key(array_ref!(secret, 0, 32));
         LionessKey{
             material: self.stream_cipher.generate_stream(&stream_key, RAW_KEY_SIZE),
@@ -208,7 +208,7 @@ mod tests {
     fn block_cipher_test() {
         let mut cipher = SphinxLionessBlockCipher::new();
         let secret = "82c8ad63392a5f59347b043e1244e68d52eb853921e2656f188d33e59a1410b4".from_hex().unwrap();
-        let lioness_key = cipher.derive_key(secret.as_slice());
+        let lioness_key = cipher.derive_key(array_ref!(secret, 0, 32));
         let want = "c26abe4b265a2c8883961ee0c811e000c4161a5ab9674aa910cdcc4ffaa4c7561cb1efe443c530b7acf8c2b64f20b9f2a2b1c895d1f26529c77ba4df1683232cdc0b4ec48d07fd3749e750f276b006e047c65b9e006ba298c832edc56a1bf4d8d630ad2f7f61bfc12bca0ecbcb4a89b5a76c720d6276dd6cdbfd2798430d3d196eab45dabeabf0286c347ed30a9f8a13e28f6333ea77f05542922e357948e386ad92583f65b7269dfdfc469eba3cfa1adbec93a657eb5796c7080d85a5c9ccde".from_hex().unwrap();
         assert!(lioness_key.material == want);
 
