@@ -265,7 +265,7 @@ pub fn sphinx_packet_unwrap<S,C>(state: S, replay_cache: C, packet: SphinxPacket
 
     // derive HMAC key from shared secret
     let mut digest = SphinxDigest::new();
-    let hmac_key = digest.derive_hmac_key(shared_secret.as_ref());
+    let hmac_key = digest.derive_hmac_key(&shared_secret);
 
     // generate HMAC and check it against gamma
     let mac = digest.hmac(&hmac_key, &packet.beta);
@@ -301,7 +301,7 @@ pub fn sphinx_packet_unwrap<S,C>(state: S, replay_cache: C, packet: SphinxPacket
         Err(_) => return Err(SphinxPacketError::InvalidMessage),
     }
     if beta_message.message_type == UnwrappedPacketType::MixHop {
-        let blinding_factor = digest.hash_blinding(&packet.alpha, &shared_secret);
+        let blinding_factor = digest.hash_blinding(array_ref!(&packet.alpha, 0, CURVE25519_SIZE), &shared_secret);
         let alpha = group.exp_on(array_ref!(packet.alpha, 0, CURVE25519_SIZE), &blinding_factor);
         let gamma = array_ref!(unwrapped_beta, SECURITY_PARAMETER, SECURITY_PARAMETER*2);
         let beta = array_ref!(unwrapped_beta, SECURITY_PARAMETER*2, BETA_CIPHER_SIZE);
