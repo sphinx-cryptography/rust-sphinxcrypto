@@ -305,7 +305,7 @@ pub fn sphinx_packet_unwrap<S,C>(state: S, replay_cache: C, packet: SphinxPacket
         let blinding_factor = digest.hash_blinding(&packet.alpha, &shared_secret);
         let alpha = group.exp_on(array_ref!(packet.alpha, 0, CURVE25519_SIZE), &blinding_factor);
         let gamma = array_ref!(unwrapped_beta, SECURITY_PARAMETER, SECURITY_PARAMETER*2);
-        let beta = array_ref!(unwrapped_beta, SECURITY_PARAMETER*2, 0); // XXX correct?
+        let beta = array_ref!(unwrapped_beta, SECURITY_PARAMETER*2, BETA_CIPHER_SIZE);
         assert!(beta.len() > 0);
         let new_packet = SphinxPacket {
             alpha: alpha.to_vec(),
