@@ -108,7 +108,6 @@ pub enum UnwrappedPacketType {
     ClientHop,
     ProcessHop,
     MixHop,
-    Invalid,
 }
 
 #[derive(Debug)]
@@ -193,7 +192,7 @@ pub struct UnwrappedPacket {
 impl Default for UnwrappedPacket {
     fn default() -> UnwrappedPacket {
         UnwrappedPacket{
-            result_type: UnwrappedPacketType::Invalid,
+            result_type: UnwrappedPacketType::MixHop,
             next_mix_id: None,
             client_id: None,
             message_id: None,
