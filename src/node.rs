@@ -288,7 +288,7 @@ pub fn sphinx_packet_unwrap<S,C>(state: S, replay_cache: C, packet: SphinxPacket
     // unwrap beta
     let stream_key = digest.derive_stream_cipher_key(&shared_secret);
     let stream_cipher = SphinxStreamCipher::new();
-    let stream = stream_cipher.generate_stream(stream_key, BETA_CIPHER_SIZE);
+    let stream = stream_cipher.generate_stream(&stream_key, BETA_CIPHER_SIZE);
     let mut unwrapped_beta = &mut [0u8; BETA_CIPHER_SIZE];
     let padding = [0u8; 2*SECURITY_PARAMETER];
     let mut beta_copy = packet.beta;

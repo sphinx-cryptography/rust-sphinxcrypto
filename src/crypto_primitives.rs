@@ -58,15 +58,10 @@ impl GroupCurve25519 {
     }
 }
 
-pub struct StreamKey {
-    material: Vec<u8>,
-}
 
 /// stream cipher for sphinx crypto usage
 #[derive(Clone, Copy)]
-pub struct SphinxStreamCipher {
-
-}
+pub struct SphinxStreamCipher {}
 
 impl SphinxStreamCipher {
 
@@ -77,9 +72,9 @@ impl SphinxStreamCipher {
     }
 
     /// given a key return a cipher stream of length n
-    pub fn generate_stream(self, key: StreamKey, n: usize) -> Vec<u8> {
+    pub fn generate_stream(self, key: &[u8; 32], n: usize) -> Vec<u8> {
         let nonce = [0u8; 8];
-        let mut cipher = ChaCha20::new(key.material.as_slice(), &nonce);
+        let mut cipher = ChaCha20::new(key, &nonce);
         let zeros = vec![0u8; n];
         let mut output = vec![0u8; n];
         cipher.process(zeros.as_slice(), output.as_mut_slice());
@@ -113,7 +108,7 @@ impl SphinxLionessBlockCipher {
     pub fn derive_key(&mut self, secret: &[u8]) -> LionessKey {
         let stream_key = self.digest.derive_stream_cipher_key(array_ref!(secret, 0, 32));
         LionessKey{
-            material: self.stream_cipher.generate_stream(stream_key, RAW_KEY_SIZE),
+            material: self.stream_cipher.generate_stream(&stream_key, RAW_KEY_SIZE),
         }
     }
 
@@ -172,16 +167,14 @@ impl SphinxDigest {
     }
 
     /// Derive a stream cipher key
-    pub fn derive_stream_cipher_key(&mut self, secret: &[u8; 32]) -> StreamKey {
+    pub fn derive_stream_cipher_key(&mut self, secret: &[u8; 32]) -> [u8; 32] {
         assert!(secret.len() == 32);
         self.digest.input(&[HASH_STREAM_KEY_PREFIX]);
         self.digest.input(secret);
         let mut out = [0u8; 32];
         self.digest.result(&mut out);
         self.digest.reset();
-        StreamKey{
-            material: out.to_vec(),
-        }
+        out
     }
 
     /// Derive an HMAC key
@@ -229,10 +222,7 @@ mod tests {
     fn stream_cipher_test() {
         let cipher = SphinxStreamCipher::new();
         let key = "82c8ad63392a5f59347b043e1244e68d52eb853921e2656f188d33e59a1410b4".from_hex().unwrap();
-        let stream_key = StreamKey{
-            material: key.to_vec(),
-        };
-        let stream = cipher.generate_stream(stream_key, 50);
+        let stream = cipher.generate_stream(array_ref!(&key,0,32), 50);
         let want = "8e295c33753c49121b3d4e8508a3f796079600df41a1401542d2346f32c0813082b2bef9059128e3da9a6bd73da43a44daa5".from_hex().unwrap();
         assert!(stream == want)
     }
