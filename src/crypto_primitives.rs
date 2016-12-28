@@ -83,7 +83,7 @@ impl SphinxStreamCipher {
 }
 
 pub struct LionessKey {
-    material: Vec<u8>,
+    _material: Vec<u8>,
 }
 
 /// A sphinx has the body of a lion. That is, the body of a sphinx packet
@@ -105,22 +105,21 @@ impl SphinxLionessBlockCipher {
     }
 
     /// given a 32 byte secret, derive a key suitable for use with our wide block cipher
-    pub fn derive_key(&mut self, secret: &[u8; 32]) -> LionessKey {
+    pub fn derive_key(&mut self, secret: &[u8; 32]) -> [u8; RAW_KEY_SIZE] {
         let stream_key = self.digest.derive_stream_cipher_key(array_ref!(secret, 0, 32));
-        LionessKey{
-            material: self.stream_cipher.generate_stream(&stream_key, RAW_KEY_SIZE),
-        }
+        let stream = self.stream_cipher.generate_stream(&stream_key, RAW_KEY_SIZE);
+        return *array_ref!(stream, 0, RAW_KEY_SIZE)
     }
 
     /// encrypt a block
-    pub fn encrypt(self, key: LionessKey, block: &mut [u8]) {
-        let cipher = Lioness::<Blake2b,ChaCha20>::new_raw(array_ref!(key.material.as_slice(), 0, RAW_KEY_SIZE));
+    pub fn encrypt(self, key: &[u8; RAW_KEY_SIZE], block: &mut [u8]) {
+        let cipher = Lioness::<Blake2b,ChaCha20>::new_raw(key);
         cipher.encrypt(block).unwrap();
     }
 
     /// decrypt a block
-    pub fn decrypt(self, key: LionessKey, block: &mut [u8]) {
-        let cipher = Lioness::<Blake2b,ChaCha20>::new_raw(array_ref!(key.material.as_slice(), 0, RAW_KEY_SIZE));
+    pub fn decrypt(self, key: &[u8; RAW_KEY_SIZE], block: &mut [u8]) {
+        let cipher = Lioness::<Blake2b,ChaCha20>::new_raw(key);
         cipher.decrypt(block).unwrap();
     }
 }
@@ -210,10 +209,10 @@ mod tests {
         let secret = "82c8ad63392a5f59347b043e1244e68d52eb853921e2656f188d33e59a1410b4".from_hex().unwrap();
         let lioness_key = cipher.derive_key(array_ref!(secret, 0, 32));
         let want = "c26abe4b265a2c8883961ee0c811e000c4161a5ab9674aa910cdcc4ffaa4c7561cb1efe443c530b7acf8c2b64f20b9f2a2b1c895d1f26529c77ba4df1683232cdc0b4ec48d07fd3749e750f276b006e047c65b9e006ba298c832edc56a1bf4d8d630ad2f7f61bfc12bca0ecbcb4a89b5a76c720d6276dd6cdbfd2798430d3d196eab45dabeabf0286c347ed30a9f8a13e28f6333ea77f05542922e357948e386ad92583f65b7269dfdfc469eba3cfa1adbec93a657eb5796c7080d85a5c9ccde".from_hex().unwrap();
-        assert!(lioness_key.material == want);
+        assert!(lioness_key.to_vec() == want);
 
         let mut block = "8e295c33753c49121b3d4e8508a3f796079600df41a1401542d2346f32c0813082b2bef9059128e3da9a6bd73da43a44daa54171bd9a48a58cf7579e9fa662fe0ac2acb8c6eed3056cd970fd35dd4d026cae".from_hex().unwrap();
-        cipher.encrypt(lioness_key, block.as_mut_slice());
+        cipher.encrypt(&lioness_key, block.as_mut_slice());
         let want_ciphertext = "31d8bc5ab4dc98c39d5371eb1431fc755d8d6b2e3a223878a685a57a77c941129a5a35e13e5db95541080435b33b30d845bdaa1d4292d3efda156abd816c9fce8ae764a0e99ddc1ed145f78a47ec53892e3b".from_hex().unwrap();
         assert!(block.to_vec() == want_ciphertext);
     }

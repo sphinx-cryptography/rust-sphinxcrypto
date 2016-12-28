@@ -283,7 +283,7 @@ pub fn sphinx_packet_unwrap<S,C>(state: S, replay_cache: C, packet: SphinxPacket
     let mut block_cipher = SphinxLionessBlockCipher::new();
     let block_cipher_key = block_cipher.derive_key(&shared_secret);
     let mut block = packet.delta.clone();
-    block_cipher.decrypt(block_cipher_key, block.as_mut_slice());
+    block_cipher.decrypt(&block_cipher_key, block.as_mut_slice());
 
     // unwrap beta
     let stream_key = digest.derive_stream_cipher_key(&shared_secret);
