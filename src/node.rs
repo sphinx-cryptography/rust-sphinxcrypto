@@ -20,6 +20,8 @@ pub const MAX_HOPS: usize = 5;
 const BETA_CIPHER_SIZE: usize = CURVE25519_SIZE + (2 * MAX_HOPS - 1) + (3 * SECURITY_PARAMETER);
 /// The size of the Sphinx packet body
 pub const PAYLOAD_SIZE: usize = 1024;
+
+
 /// This trait is used to detect mix packet replay attacks. A unique
 /// tag for each packet is remembered and if ever seen again implies a
 /// replay attack. Note that we can flush our cache upon mix node key
@@ -371,4 +373,29 @@ pub fn sphinx_packet_unwrap<S,C>(state: S, replay_cache: C, packet: SphinxPacket
         return Ok(p);
     }
     return Err(SphinxPacketError::InvalidMessage);
+}
+
+#[cfg(test)]
+mod tests {
+    extern crate rustc_serialize;
+    use super::*;
+    //use self::rustc_serialize::hex::FromHex;
+    //use self::rustc_serialize::hex::{FromHex, ToHex};
+
+    #[test]
+    fn sphinx_packet_unwrap_test() {
+        let mix_keys = VolatileMixState{ // XXX
+            id: [0u8; 16],
+            public_key: [0u8; 32],
+            private_key: [0u8; 32],
+        };
+        let replay_cache = VolatileReplayHashMap::new();
+        let packet = SphinxPacket{ // XXX
+            alpha: vec![1,2,3],
+            beta: vec![1,2,3],
+            gamma: vec![1,2,3],
+            delta: vec![1,2,3],
+        };
+        let _ = sphinx_packet_unwrap(mix_keys, replay_cache, packet);
+    }
 }
