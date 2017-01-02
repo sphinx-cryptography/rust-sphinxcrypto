@@ -98,7 +98,7 @@ pub struct SphinxPacket {
 pub enum SphinxPacketError {
     ReplayAttack,
     InvalidHMAC,
-    InvalidMessage,
+    InvalidMessage(pub PrefixFreeDecodeError),
     InvalidClientHop,
     InvalidProcessHop,
 }
@@ -300,7 +300,7 @@ pub fn sphinx_packet_unwrap<S,C>(state: S, replay_cache: C, packet: SphinxPacket
     let beta_message: PrefixFreeDecodedMessage;
     match prefix_free_decode(unwrapped_beta) {
         Ok(m) => beta_message = m,
-        Err(_) => return Err(SphinxPacketError::InvalidMessage),
+        Err(e) => return Err(SphinxPacketError::InvalidMessage(e)),
     }
     if beta_message.message_type == UnwrappedPacketType::MixHop {
         let blinding_factor = digest.hash_blinding(array_ref!(&packet.alpha, 0, CURVE25519_SIZE), &shared_secret);
