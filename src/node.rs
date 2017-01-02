@@ -297,11 +297,10 @@ pub fn sphinx_packet_unwrap<S,C>(state: S, replay_cache: C, packet: SphinxPacket
     beta_copy.extend(padding.as_ref());
     xor(&stream, beta_copy.as_ref(), unwrapped_beta);
 
-    let beta_message: PrefixFreeDecodedMessage;
-    match prefix_free_decode(unwrapped_beta) {
-        Ok(m) => beta_message = m,
+    let beta_message = match prefix_free_decode(unwrapped_beta) {
+        Ok(m) => m,
         Err(e) => return Err(SphinxPacketError::InvalidMessage(e)),
-    }
+    };
     if beta_message.message_type == UnwrappedPacketType::MixHop {
         let blinding_factor = digest.hash_blinding(array_ref!(&packet.alpha, 0, CURVE25519_SIZE), &shared_secret);
         let alpha = group.exp_on(array_ref!(packet.alpha, 0, CURVE25519_SIZE), &blinding_factor);
@@ -349,11 +348,10 @@ pub fn sphinx_packet_unwrap<S,C>(state: S, replay_cache: C, packet: SphinxPacket
         if zeros != *body_head {
             return Err(SphinxPacketError::InvalidProcessHop)
         }
-        let body_message: PrefixFreeDecodedMessage;
-        match prefix_free_decode(body_tail) {
-            Ok(m) => body_message = m,
+        let body_message = match prefix_free_decode(body_tail) {
+            Ok(m) => m,
             Err(_) => return Err(SphinxPacketError::InvalidProcessHop),
-        }
+        };
         if body_message.message_type != UnwrappedPacketType::ClientHop {
             return Err(SphinxPacketError::InvalidProcessHop)
         }
