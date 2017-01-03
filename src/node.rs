@@ -390,11 +390,9 @@ mod tests {
 
     #[test]
     fn sphinx_packet_unwrap_test() {
-        let params = SphinxParams {
-            max_hops: 5,
-            beta_cipher_size: 0,
-            payload_size: 1024,
-        };
+        let max_hops = 5;
+        let payload_size = 1024;
+        let params = SphinxParams::new(max_hops, payload_size);
         let mix_state = VolatileMixState::new([0u8; 16], [0u8; 32], [0u8; 32]); // XXX fix me
         let packet = SphinxPacket{ // XXX
             alpha: vec![1,2,3],
