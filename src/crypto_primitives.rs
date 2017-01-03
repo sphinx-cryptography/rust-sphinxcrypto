@@ -141,6 +141,7 @@ impl SphinxDigest {
         self.digest.input(input);
         let mut out = [0u8; 32];
         self.digest.result(&mut out);
+        self.digest.reset();
         out
     }
 
