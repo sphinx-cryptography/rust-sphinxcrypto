@@ -262,7 +262,7 @@ impl SphinxParams {
 /// * `SphinxPacketError::InvalidHop(ClientHop)` - invalid client hop
 /// * `SphinxPacketError::InvalidHop(ProcessHop)` - invalid process hop
 ///
-pub fn sphinx_packet_unwrap<S: PacketReplayCache + MixPrivateKey>(params: SphinxParams, state: &S, packet: SphinxPacket) -> Result<UnwrappedPacket, SphinxPacketError>
+pub fn sphinx_packet_unwrap<S: PacketReplayCache + MixPrivateKey>(params: &SphinxParams, state: &S, packet: SphinxPacket) -> Result<UnwrappedPacket, SphinxPacketError>
 {
     // derive shared secret from alpha using our private key
     let group = GroupCurve25519::new();
@@ -299,13 +299,13 @@ pub fn sphinx_packet_unwrap<S: PacketReplayCache + MixPrivateKey>(params: Sphinx
     let stream_key = digest.derive_stream_cipher_key(&shared_secret);
     let stream_cipher = SphinxStreamCipher::new();
     let stream = stream_cipher.generate_stream(&stream_key, params.beta_cipher_size);
-    let mut unwrapped_beta = &mut [0u8; params.beta_cipher_size];
+    let mut unwrapped_beta = vec![0u8; params.beta_cipher_size];
     let padding = [0u8; 2*SECURITY_PARAMETER];
     let mut beta_copy = packet.beta;
     beta_copy.extend(padding.as_ref());
-    xor(&stream, beta_copy.as_ref(), unwrapped_beta);
+    xor(&stream, beta_copy.as_ref(), unwrapped_beta.as_mut_slice());
 
-    let beta_message = match prefix_free_decode(unwrapped_beta) {
+    let beta_message = match prefix_free_decode(unwrapped_beta.as_slice()) {
         Ok(m) => m,
         Err(e) => return Err(SphinxPacketError::InvalidMessage(e)),
     };
@@ -313,13 +313,13 @@ pub fn sphinx_packet_unwrap<S: PacketReplayCache + MixPrivateKey>(params: Sphinx
       UnwrappedPacketType::MixHop => {
         let blinding_factor = digest.hash_blinding(array_ref!(&packet.alpha, 0, CURVE25519_SIZE), &shared_secret);
         let alpha = group.exp_on(array_ref!(packet.alpha, 0, CURVE25519_SIZE), &blinding_factor);
-        let gamma = array_ref!(unwrapped_beta, SECURITY_PARAMETER, SECURITY_PARAMETER*2);
-        let beta = array_ref!(unwrapped_beta, SECURITY_PARAMETER*2, params.beta_cipher_size);
+        let (gamma0,beta) = unwrapped_beta.split_at(SECURITY_PARAMETER*2);
+        // let gamma = array_ref!(gamma0, SECURITY_PARAMETER, SECURITY_PARAMETER*2);
         assert!(beta.len() > 0);
         let new_packet = SphinxPacket {
             alpha: alpha.to_vec(),
             beta: beta.to_vec(),
-            gamma: gamma.to_vec(),
+            gamma: gamma0.to_vec(),
             delta: block.to_vec(),
         };
         let mix_id = array_ref!(beta_message.value, 0, SECURITY_PARAMETER);
@@ -352,8 +352,7 @@ pub fn sphinx_packet_unwrap<S: PacketReplayCache + MixPrivateKey>(params: Sphinx
       },
       UnwrappedPacketType::ProcessHop => {
         let zeros = [0u8; SECURITY_PARAMETER];
-        let body_head = array_ref!(block.as_slice(), 0, SECURITY_PARAMETER);
-        let body_tail = array_ref!(block.as_slice(), SECURITY_PARAMETER, params.payload_size-SECURITY_PARAMETER);
+        let (body_head,body_tail) = block.split_at(SECURITY_PARAMETER);
         if zeros != *body_head {
             return Err(SphinxPacketError::InvalidHop(UnwrappedPacketType::ProcessHop))
         }
@@ -391,6 +390,11 @@ mod tests {
 
     #[test]
     fn sphinx_packet_unwrap_test() {
+        let params = SphinxParams {
+            max_hops: 5,
+            beta_cipher_size: 0,
+            payload_size: 1024,
+        };
         let mix_state = VolatileMixState::new([0u8; 16], [0u8; 32], [0u8; 32]); // XXX fix me
         let packet = SphinxPacket{ // XXX
             alpha: vec![1,2,3],
@@ -398,6 +402,6 @@ mod tests {
             gamma: vec![1,2,3],
             delta: vec![1,2,3],
         };
-        let _ = sphinx_packet_unwrap(&mix_state, packet);
+        let _ = sphinx_packet_unwrap(&params, &mix_state, packet);
     }
 }
