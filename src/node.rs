@@ -45,7 +45,7 @@ pub trait PacketReplayCache {
 /// mix nodes only need their private key
 /// to perform packet unwrapping.
 pub trait MixPrivateKey {
-    fn get_private_key(self) -> [u8; 32];
+    fn get_private_key(&self) -> &[u8; 32];
 }
 
 /// this struct represents the Sphinx mix node's current
@@ -75,8 +75,8 @@ impl VolatileMixState {
 
 impl MixPrivateKey for VolatileMixState {
     /// return the private key
-    fn get_private_key(self) -> [u8; 32] {
-        self.private_key
+    fn get_private_key(&self) -> &[u8; 32] {
+        &self.private_key
     }
 }
 
@@ -252,7 +252,7 @@ impl Default for UnwrappedPacket {
 /// * `SphinxPacketError::InvalidHop(ClientHop)` - invalid client hop
 /// * `SphinxPacketError::InvalidHop(ProcessHop)` - invalid process hop
 ///
-pub fn sphinx_packet_unwrap<S: Copy + PacketReplayCache + MixPrivateKey>(state: S, packet: SphinxPacket) -> Result<UnwrappedPacket, SphinxPacketError>
+pub fn sphinx_packet_unwrap<S: PacketReplayCache + MixPrivateKey>(state: &S, packet: SphinxPacket) -> Result<UnwrappedPacket, SphinxPacketError>
 {
     // derive shared secret from alpha using our private key
     let group = GroupCurve25519::new();
@@ -388,6 +388,6 @@ mod tests {
             gamma: vec![1,2,3],
             delta: vec![1,2,3],
         };
-        let _ = sphinx_packet_unwrap(mix_state, packet);
+        let _ = sphinx_packet_unwrap(&mix_state, packet);
     }
 }
