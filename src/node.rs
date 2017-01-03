@@ -98,14 +98,14 @@ pub struct SphinxPacket {
 pub enum SphinxPacketError {
     ReplayAttack,
     InvalidHMAC,
-    InvalidMessage,
-    InvalidClientHop,
+    InvalidMessage(PrefixFreeDecodeError),
+    InvalidHop(UnwrappedPacketType), // MixHop does not occur currently
     InvalidProcessHop,
 }
 
 /// UnwrappedPacketType represents one of three possible
 /// types of results
-#[derive(PartialEq)]
+#[derive(Debug,PartialEq)]
 pub enum UnwrappedPacketType {
     ClientHop,
     ProcessHop,
@@ -249,8 +249,8 @@ impl SphinxMixState for VolatileMixState {
 /// * `SphinxPacketError::ReplayAttack` - indicates a replay attack when a packet tag was found in the `replay_cache`
 /// * `SphinxPacketError::InvalidHMAC` - computed HMAC doesn't match the gamma element
 /// * `SphinxPacketError::InvalidMessage` - prefix-free encoding error, invalid message type
-/// * `SphinxPacketError::InvalidClientHop` - invalid client hop
-/// * `SphinxPacketError::InvalidProcessHop` - invalid process hop
+/// * `SphinxPacketError::InvalidHop(ClientHop)` - invalid client hop
+/// * `SphinxPacketError::InvalidHop(ProcessHop)` - invalid process hop
 ///
 pub fn sphinx_packet_unwrap<S,C>(state: S, replay_cache: C, packet: SphinxPacket) -> Result<UnwrappedPacket, SphinxPacketError>
     where S: SphinxMixState,
@@ -297,12 +297,12 @@ pub fn sphinx_packet_unwrap<S,C>(state: S, replay_cache: C, packet: SphinxPacket
     beta_copy.extend(padding.as_ref());
     xor(&stream, beta_copy.as_ref(), unwrapped_beta);
 
-    let beta_message: PrefixFreeDecodedMessage;
-    match prefix_free_decode(unwrapped_beta) {
-        Ok(m) => beta_message = m,
-        Err(_) => return Err(SphinxPacketError::InvalidMessage),
-    }
-    if beta_message.message_type == UnwrappedPacketType::MixHop {
+    let beta_message = match prefix_free_decode(unwrapped_beta) {
+        Ok(m) => m,
+        Err(e) => return Err(SphinxPacketError::InvalidMessage(e)),
+    };
+    match beta_message.message_type {
+      UnwrappedPacketType::MixHop => {
         let blinding_factor = digest.hash_blinding(array_ref!(&packet.alpha, 0, CURVE25519_SIZE), &shared_secret);
         let alpha = group.exp_on(array_ref!(packet.alpha, 0, CURVE25519_SIZE), &blinding_factor);
         let gamma = array_ref!(unwrapped_beta, SECURITY_PARAMETER, SECURITY_PARAMETER*2);
@@ -321,11 +321,11 @@ pub fn sphinx_packet_unwrap<S,C>(state: S, replay_cache: C, packet: SphinxPacket
             packet: new_packet,
             ..Default::default()
         };
-        return Ok(p);
-    }
-    if beta_message.message_type == UnwrappedPacketType::ClientHop {
+        Ok(p)
+      },
+      UnwrappedPacketType::ClientHop => {
         if beta_message.remainder.len() < SECURITY_PARAMETER {
-            return Err(SphinxPacketError::InvalidClientHop)
+            return Err(SphinxPacketError::InvalidHop(UnwrappedPacketType::ClientHop))
         }
         let new_packet = SphinxPacket {
             delta: block.to_vec(),
@@ -340,22 +340,21 @@ pub fn sphinx_packet_unwrap<S,C>(state: S, replay_cache: C, packet: SphinxPacket
             packet: new_packet,
             ..Default::default()
         };
-        return Ok(p);
-    }
-    if beta_message.message_type == UnwrappedPacketType::ProcessHop {
+        Ok(p)
+      },
+      UnwrappedPacketType::ProcessHop => {
         let zeros = [0u8; SECURITY_PARAMETER];
         let body_head = array_ref!(block.as_slice(), 0, SECURITY_PARAMETER);
         let body_tail = array_ref!(block.as_slice(), SECURITY_PARAMETER, PAYLOAD_SIZE-SECURITY_PARAMETER);
         if zeros != *body_head {
-            return Err(SphinxPacketError::InvalidProcessHop)
+            return Err(SphinxPacketError::InvalidHop(UnwrappedPacketType::ProcessHop))
         }
-        let body_message: PrefixFreeDecodedMessage;
-        match prefix_free_decode(body_tail) {
-            Ok(m) => body_message = m,
+        let body_message = match prefix_free_decode(body_tail) {
+            Ok(m) => m,
             Err(_) => return Err(SphinxPacketError::InvalidProcessHop),
-        }
+        };
         if body_message.message_type != UnwrappedPacketType::ClientHop {
-            return Err(SphinxPacketError::InvalidProcessHop)
+            return Err(SphinxPacketError::InvalidHop(UnwrappedPacketType::ProcessHop))
         }
         // XXX TODO: remove padding from message body
         let unpadded_body = block.to_vec();
@@ -370,9 +369,9 @@ pub fn sphinx_packet_unwrap<S,C>(state: S, replay_cache: C, packet: SphinxPacket
             packet: new_packet,
             ..Default::default()
         };
-        return Ok(p);
+        Ok(p)
+      },
     }
-    return Err(SphinxPacketError::InvalidMessage);
 }
 
 #[cfg(test)]
