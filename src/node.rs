@@ -16,13 +16,6 @@ use std::fmt;
 /// Sphinx digest and cipher stream functions are keyed with the 128 bits of security.
 pub const SECURITY_PARAMETER: usize = 16;
 
-// XXX these should be configurable instead of constants
-/// The maximum number of hops a Sphinx packet may contain.
-pub const MAX_HOPS: usize = 5;
-const BETA_CIPHER_SIZE: usize = CURVE25519_SIZE + (2 * MAX_HOPS - 1) + (3 * SECURITY_PARAMETER);
-/// The size of the Sphinx packet body
-pub const PAYLOAD_SIZE: usize = 1024;
-
 
 /// This trait is used to detect packet replays. A unique tag for each
 /// packet is remembered and if ever seen again implies a packet
@@ -234,13 +227,30 @@ impl Default for UnwrappedPacket {
 }
 
 
+pub struct SphinxParams {
+    /// The maximum number of hops a Sphinx packet may contain.
+    pub max_hops: usize,
+    pub beta_cipher_size: usize,
+    /// The size of the Sphinx packet body
+    pub payload_size: usize,
+}
+
+impl SphinxParams {
+    pub fn new(max_hops: usize, payload_size: usize) -> SphinxParams {
+        SphinxParams{
+            max_hops: max_hops,
+            payload_size: payload_size,
+            beta_cipher_size: CURVE25519_SIZE + (2 * max_hops - 1) + (3 * SECURITY_PARAMETER),
+        }
+    }
+}
 
 /// unwrap a single layer of sphinx mix packet encryption
 /// and returns a Result of either UnwrappedPacket or SphinxPacketError
 ///
 /// # Arguments
 ///
-/// * `state` - an implementation of the PacketReplayCache trait AND MixPrivateKey trait
+/// * `state` - an implementation of the PacketReplayCache trait + MixPrivateKey trait + Copy trait
 /// * `replay_cache` - an implementation of the PacketReplayCache trait
 /// * `packet` - a reference to a SphinxPacket
 ///
@@ -252,7 +262,7 @@ impl Default for UnwrappedPacket {
 /// * `SphinxPacketError::InvalidHop(ClientHop)` - invalid client hop
 /// * `SphinxPacketError::InvalidHop(ProcessHop)` - invalid process hop
 ///
-pub fn sphinx_packet_unwrap<S: Copy + PacketReplayCache + MixPrivateKey>(state: S, packet: SphinxPacket) -> Result<UnwrappedPacket, SphinxPacketError>
+pub fn sphinx_packet_unwrap<S: Copy + PacketReplayCache + MixPrivateKey>(params: *SphinxParams, state: S, packet: SphinxPacket) -> Result<UnwrappedPacket, SphinxPacketError>
 {
     // derive shared secret from alpha using our private key
     let group = GroupCurve25519::new();
@@ -288,8 +298,8 @@ pub fn sphinx_packet_unwrap<S: Copy + PacketReplayCache + MixPrivateKey>(state: 
     // unwrap beta
     let stream_key = digest.derive_stream_cipher_key(&shared_secret);
     let stream_cipher = SphinxStreamCipher::new();
-    let stream = stream_cipher.generate_stream(&stream_key, BETA_CIPHER_SIZE);
-    let mut unwrapped_beta = &mut [0u8; BETA_CIPHER_SIZE];
+    let stream = stream_cipher.generate_stream(&stream_key, params.beta_cipher_size);
+    let mut unwrapped_beta = &mut [0u8; params.beta_cipher_size];
     let padding = [0u8; 2*SECURITY_PARAMETER];
     let mut beta_copy = packet.beta;
     beta_copy.extend(padding.as_ref());
@@ -304,7 +314,7 @@ pub fn sphinx_packet_unwrap<S: Copy + PacketReplayCache + MixPrivateKey>(state: 
         let blinding_factor = digest.hash_blinding(array_ref!(&packet.alpha, 0, CURVE25519_SIZE), &shared_secret);
         let alpha = group.exp_on(array_ref!(packet.alpha, 0, CURVE25519_SIZE), &blinding_factor);
         let gamma = array_ref!(unwrapped_beta, SECURITY_PARAMETER, SECURITY_PARAMETER*2);
-        let beta = array_ref!(unwrapped_beta, SECURITY_PARAMETER*2, BETA_CIPHER_SIZE);
+        let beta = array_ref!(unwrapped_beta, SECURITY_PARAMETER*2, params.beta_cipher_size);
         assert!(beta.len() > 0);
         let new_packet = SphinxPacket {
             alpha: alpha.to_vec(),
@@ -343,7 +353,7 @@ pub fn sphinx_packet_unwrap<S: Copy + PacketReplayCache + MixPrivateKey>(state: 
       UnwrappedPacketType::ProcessHop => {
         let zeros = [0u8; SECURITY_PARAMETER];
         let body_head = array_ref!(block.as_slice(), 0, SECURITY_PARAMETER);
-        let body_tail = array_ref!(block.as_slice(), SECURITY_PARAMETER, PAYLOAD_SIZE-SECURITY_PARAMETER);
+        let body_tail = array_ref!(block.as_slice(), SECURITY_PARAMETER, params.payload_size-SECURITY_PARAMETER);
         if zeros != *body_head {
             return Err(SphinxPacketError::InvalidHop(UnwrappedPacketType::ProcessHop))
         }
