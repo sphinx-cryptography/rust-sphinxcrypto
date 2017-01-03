@@ -15,6 +15,8 @@ use std::fmt;
 /// curve25519 uses a 256 bit key and provides 128 bits of security. Therefor the
 /// Sphinx digest and cipher stream functions are keyed with the 128 bits of security.
 pub const SECURITY_PARAMETER: usize = 16;
+
+// XXX these should be configurable instead of constants
 /// The maximum number of hops a Sphinx packet may contain.
 pub const MAX_HOPS: usize = 5;
 const BETA_CIPHER_SIZE: usize = CURVE25519_SIZE + (2 * MAX_HOPS - 1) + (3 * SECURITY_PARAMETER);
@@ -22,9 +24,9 @@ const BETA_CIPHER_SIZE: usize = CURVE25519_SIZE + (2 * MAX_HOPS - 1) + (3 * SECU
 pub const PAYLOAD_SIZE: usize = 1024;
 
 
-/// This trait is used to detect mix packet replay attacks. A unique
-/// tag for each packet is remembered and if ever seen again implies a
-/// replay attack. Note that we can flush our cache upon mix node key
+/// This trait is used to detect packet replays. A unique tag for each
+/// packet is remembered and if ever seen again implies a packet
+/// replay. Note that we can flush our cache upon mix node key
 /// rotation, which must happen fairly often.
 pub trait PacketReplayCache {
     /// returns true if we've seen a given tag before
@@ -40,22 +42,45 @@ pub trait PacketReplayCache {
     fn flush(&mut self);
 }
 
-/// VolatileReplayHashMap is used to detect replay attacks
-/// with a volatile cache, a HashMap. No disk persistence is used here.
-pub struct VolatileReplayHashMap {
-    map: HashMap<[u8; 32], bool>,
+/// mix nodes only need their private key
+/// to perform packet unwrapping.
+pub trait MixPrivateKey {
+    fn get_private_key(self) -> [u8; 32];
 }
 
-impl VolatileReplayHashMap {
-    /// return a new VolatileReplayHashMap struct
-    pub fn new() -> VolatileReplayHashMap {
-        VolatileReplayHashMap{
-            map: HashMap::new(),            
+/// this struct represents the Sphinx mix node's current
+/// key material state and node identification.
+pub struct VolatileMixState {
+    /// used to detect replays/duplicate packets
+    map: HashMap<[u8; 32], bool>,
+    /// node identification
+    pub id: [u8; 16],
+    /// public key
+    pub public_key: [u8; 32],
+    /// private key
+    pub private_key: [u8; 32],
+}
+
+impl VolatileMixState {
+    /// return a new VolatileMixState struct
+    pub fn new(id: [u8; 16], public_key: [u8; 32], private_key: [u8; 32],) -> VolatileMixState {
+        VolatileMixState{
+            map: HashMap::new(),
+            id: id,
+            public_key: public_key,
+            private_key: private_key,
         }
     }
 }
 
-impl PacketReplayCache for VolatileReplayHashMap {
+impl MixPrivateKey for VolatileMixState {
+    /// return the private key
+    fn get_private_key(self) -> [u8; 32] {
+        self.private_key
+    }
+}
+
+impl PacketReplayCache for VolatileMixState {
     /// return true if the given tag is present in our HashMap
     ///
     /// # Arguments
@@ -96,7 +121,7 @@ pub struct SphinxPacket {
 /// Errors that can be produced while unwrapping sphinx packets
 #[derive(Debug)]
 pub enum SphinxPacketError {
-    ReplayAttack,
+    DuplicatePacket,
     InvalidHMAC,
     InvalidMessage(PrefixFreeDecodeError),
     InvalidHop(UnwrappedPacketType), // MixHop does not occur currently
@@ -208,53 +233,26 @@ impl Default for UnwrappedPacket {
     }
 }
 
-/// sphinx mix node key material state.
-/// mix nodes only need their private key
-/// to perform packet unwrapping. However
-/// this private key is of course destroyed
-/// during key rotation.
-pub trait SphinxMixState {
-    fn get_private_key(self) -> [u8; 32];
-}
 
-/// this struct represents the Sphinx mix node's current
-/// key material state and node identification.
-pub struct VolatileMixState {
-    /// node identification
-    pub id: [u8; 16],
-    /// public key
-    pub public_key: [u8; 32],
-    /// private key
-    pub private_key: [u8; 32],
-}
-
-impl SphinxMixState for VolatileMixState {
-    /// return the private key
-    fn get_private_key(self) -> [u8; 32] {
-        self.private_key
-    }
-}
 
 /// unwrap a single layer of sphinx mix packet encryption
 /// and returns a Result of either UnwrappedPacket or SphinxPacketError
 ///
 /// # Arguments
 ///
-/// * `state` - an implementation of the SphinxMixState trait
+/// * `state` - an implementation of the PacketReplayCache trait AND MixPrivateKey trait
 /// * `replay_cache` - an implementation of the PacketReplayCache trait
 /// * `packet` - a reference to a SphinxPacket
 ///
 /// # Errors
 ///
-/// * `SphinxPacketError::ReplayAttack` - indicates a replay attack when a packet tag was found in the `replay_cache`
+/// * `SphinxPacketError::DuplicatePacket` - indicates a packet that was already seen, it's tag was found in the `PacketReplayCache`
 /// * `SphinxPacketError::InvalidHMAC` - computed HMAC doesn't match the gamma element
 /// * `SphinxPacketError::InvalidMessage` - prefix-free encoding error, invalid message type
 /// * `SphinxPacketError::InvalidHop(ClientHop)` - invalid client hop
 /// * `SphinxPacketError::InvalidHop(ProcessHop)` - invalid process hop
 ///
-pub fn sphinx_packet_unwrap<S,C>(state: S, replay_cache: C, packet: SphinxPacket) -> Result<UnwrappedPacket, SphinxPacketError>
-    where S: SphinxMixState,
-          C: PacketReplayCache
+pub fn sphinx_packet_unwrap<S: Copy + PacketReplayCache + MixPrivateKey>(state: S, packet: SphinxPacket) -> Result<UnwrappedPacket, SphinxPacketError>
 {
     // derive shared secret from alpha using our private key
     let group = GroupCurve25519::new();
@@ -277,8 +275,8 @@ pub fn sphinx_packet_unwrap<S,C>(state: S, replay_cache: C, packet: SphinxPacket
 
     // check prefix hash against our replay cache
     let tag = digest.hash_replay(&shared_secret);
-    if replay_cache.check(tag) {
-        return Err(SphinxPacketError::ReplayAttack)
+    if state.check(tag) {
+        return Err(SphinxPacketError::DuplicatePacket)
     }
 
     // unwrap body, lioness decrypt block
@@ -383,18 +381,13 @@ mod tests {
 
     #[test]
     fn sphinx_packet_unwrap_test() {
-        let mix_keys = VolatileMixState{ // XXX
-            id: [0u8; 16],
-            public_key: [0u8; 32],
-            private_key: [0u8; 32],
-        };
-        let replay_cache = VolatileReplayHashMap::new();
+        let mix_state = VolatileMixState::new([0u8; 16], [0u8; 32], [0u8; 32]); // XXX fix me
         let packet = SphinxPacket{ // XXX
             alpha: vec![1,2,3],
             beta: vec![1,2,3],
             gamma: vec![1,2,3],
             delta: vec![1,2,3],
         };
-        let _ = sphinx_packet_unwrap(mix_keys, replay_cache, packet);
+        let _ = sphinx_packet_unwrap(mix_state, packet);
     }
 }
