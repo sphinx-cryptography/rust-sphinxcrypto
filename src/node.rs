@@ -246,23 +246,24 @@ impl SphinxParams {
 }
 
 /// unwrap a single layer of sphinx mix packet encryption
-/// and returns a Result of either UnwrappedPacket or SphinxPacketError
+/// and return a Result of either UnwrappedPacket or SphinxPacketError
 ///
 /// # Arguments
 ///
-/// * `state` - an implementation of the PacketReplayCache trait + MixPrivateKey trait + Copy trait
-/// * `replay_cache` - an implementation of the PacketReplayCache trait
+/// * `params` - a reference to a SphinxParams struct
+/// * `state` - an implementation of the PacketReplayCache trait + MixPrivateKey trait
 /// * `packet` - a reference to a SphinxPacket
 ///
 /// # Errors
 ///
-/// * `SphinxPacketError::DuplicatePacket` - indicates a packet that was already seen, it's tag was found in the `PacketReplayCache`
+/// * `SphinxPacketError::DuplicatePacket` - indicates a packet that was already seen
 /// * `SphinxPacketError::InvalidHMAC` - computed HMAC doesn't match the gamma element
 /// * `SphinxPacketError::InvalidMessage` - prefix-free encoding error, invalid message type
 /// * `SphinxPacketError::InvalidHop(ClientHop)` - invalid client hop
 /// * `SphinxPacketError::InvalidHop(ProcessHop)` - invalid process hop
 ///
-pub fn sphinx_packet_unwrap<S: PacketReplayCache + MixPrivateKey>(params: &SphinxParams, state: &S, packet: SphinxPacket) -> Result<UnwrappedPacket, SphinxPacketError>
+pub fn sphinx_packet_unwrap<S: PacketReplayCache + MixPrivateKey>(params: &SphinxParams, state: &S, packet: SphinxPacket)
+                                                                  -> Result<UnwrappedPacket, SphinxPacketError>
 {
     // derive shared secret from alpha using our private key
     let group = GroupCurve25519::new();
