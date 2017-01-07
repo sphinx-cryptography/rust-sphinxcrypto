@@ -3,6 +3,7 @@
 //! Sphinx mix node cryptographic operations
 
 extern crate lioness;
+extern crate rustc_serialize;
 
 use std::collections::HashMap;
 pub use crypto_primitives::{GroupCurve25519, SphinxDigest,
@@ -10,6 +11,8 @@ pub use crypto_primitives::{GroupCurve25519, SphinxDigest,
 use self::lioness::xor;
 use std::error::Error;
 use std::fmt;
+use rustc_serialize::hex::ToHex;
+
 
 /// The "security bits" expressed as bytes that Sphinx mix packet crypto provides,
 /// curve25519 uses a 256 bit key and provides 128 bits of security. Therefor the
@@ -79,6 +82,7 @@ impl PacketReplayCache for VolatileMixState {
     /// # Arguments
     /// * `tag` - a 32 byte value
     fn check(&self, tag: [u8; 32]) -> bool {
+        println!("check tag {}", tag.to_hex());
         match self.map.get(&tag) {
             Some(_) => return true,
             None => return false,
@@ -99,7 +103,7 @@ impl PacketReplayCache for VolatileMixState {
 }
 
 /// SphinxPacket represents a decoded sphinx mix packet
-#[derive(Default)]
+#[derive(Default,Clone)]
 pub struct SphinxPacket {
     /// the blinded key element
     pub alpha: Vec<u8>,
@@ -117,7 +121,7 @@ pub enum SphinxPacketError {
     DuplicatePacket,
     InvalidHMAC,
     InvalidMessage(PrefixFreeDecodeError),
-    InvalidHop(UnwrappedPacketType), // MixHop does not occur currently
+    InvalidHop(UnwrappedPacketType),
     InvalidProcessHop,
 }
 
@@ -186,8 +190,11 @@ pub fn prefix_free_decode(s: &[u8]) -> Result<PrefixFreeDecodedMessage, PrefixFr
     } else if s[0] < 128 {
         return Ok(PrefixFreeDecodedMessage{
             message_type: UnwrappedPacketType::ClientHop,
-            value: s[1..s[0] as usize +1].as_ref().to_vec(),
-            remainder: s[s[0] as usize +1..].as_ref().to_vec(),
+            // XXX
+            //value: s[1..s[0] as usize +1].as_ref().to_vec(),
+            //remainder: s[s[0] as usize +1..].as_ref().to_vec(),
+            value: s[0..SECURITY_PARAMETER].as_ref().to_vec(),
+            remainder: s[SECURITY_PARAMETER..].as_ref().to_vec(),
         })
     }
     return Err(PrefixFreeDecodeError::InvalidInputError)
@@ -240,7 +247,7 @@ impl SphinxParams {
         SphinxParams{
             max_hops: max_hops,
             payload_size: payload_size,
-            beta_cipher_size: CURVE25519_SIZE + (2 * max_hops - 1) + (3 * SECURITY_PARAMETER),
+            beta_cipher_size: CURVE25519_SIZE + (2 * max_hops+1) * SECURITY_PARAMETER,
         }
     }
 }
@@ -386,21 +393,38 @@ pub fn sphinx_packet_unwrap<S: PacketReplayCache + MixPrivateKey>(params: &Sphin
 mod tests {
     extern crate rustc_serialize;
     use super::*;
-    //use self::rustc_serialize::hex::FromHex;
+    use self::rustc_serialize::hex::FromHex;
     //use self::rustc_serialize::hex::{FromHex, ToHex};
 
     #[test]
-    fn sphinx_packet_unwrap_test() {
+    fn packet_replay_test() {
         let max_hops = 5;
         let payload_size = 1024;
         let params = SphinxParams::new(max_hops, payload_size);
-        let mix_state = VolatileMixState::new([0u8; 16], [0u8; 32], [0u8; 32]); // XXX fix me
-        let packet = SphinxPacket{ // XXX
-            alpha: vec![1,2,3],
-            beta: vec![1,2,3],
-            gamma: vec![1,2,3],
-            delta: vec![1,2,3],
+
+        let node_id_bytes = "ff81855a360000000000000000000000".from_hex().unwrap();
+        let node_id = array_ref!(node_id_bytes, 0, 16);
+        let pub_key_bytes = "73514173ee741afacdd4733e84f629b5cb9e34d28d072d749a8171fc6d64a930".from_hex().unwrap();
+        let pub_key = array_ref!(pub_key_bytes, 0, 32);
+        let priv_key_bytes = "9863a8f1b5307938cd4bc9782411e9eea0a38b9144d096bd923085dfb8534277".from_hex().unwrap();
+        let priv_key = array_ref!(priv_key_bytes, 0, 32);
+
+        let mix_state = VolatileMixState::new(*node_id, *pub_key, *priv_key);
+        let packet = SphinxPacket{
+            alpha: "cbe28bea4d68103461bc0cc2db4b6c4f38bc82af83f5f1de998c33d46c15f72d".from_hex().unwrap(),
+            beta: "a5578dc72fcea3501169472b0877ca46627789750820b29a3298151e12e04781645f6007b6e773e4b7177a67adf30d0ec02c472ddf7609eba1a1130c80789832fb201eed849c02244465f39a70d7520d641be371020083946832d2f7da386d93b4627b0121502e5812209d674b3a108016618b2e9f210978f46faaa2a7e97a4d678a106631581cc51120946f5915ee2bfd9db11e5ec93ae7ffe4d4dc8ab66985cfe9da441b708e4e5dc7c00ea42abf1a".from_hex().unwrap(),
+            gamma: "976fdfd8262dbb7557c988588ac9a204".from_hex().unwrap(),
+            delta: "0a9411a57044d20b6c4004c730a78d79550dc2f22ba1c9c05e1d15e0fcadb6b1b353f028109fd193cb7c14af3251e6940572c7cd4243977896504ce0b59b17e8da04de5eb046a92f1877b55d43def3cc11a69a11050a8abdceb45bc1f09a22960fdffce720e5ed5767fbb62be1fd369dcdea861fd8582d01666a08bf3c8fb691ac5d2afca82f4759029f8425374ae4a4c91d44d05cb1a64193319d9413de7d2cfdffe253888535a8493ab8a0949a870ae512d2137630e2e4b2d772f6ee9d3b9d8cadd2f6dc34922701b21fa69f1be6d0367a26c2875cb7afffe60d59597cc084854beebd80d559cf14fcb6642c4ab9102b2da409685f5ca9a23b6c718362ccd6405d993dbd9471b4e7564631ce714d9c022852113268481930658e5cee6d2538feb9521164b2b1d4d68c76967e2a8e362ef8f497d521ee0d57bcd7c8fcc4c673f8f8d700c9c71f70c73194f2eddf03f954066372918693f8e12fc980e1b8ad765c8806c0ba144b86277170b12df16b47de5a2596b2149c4408afbe8f790d3cebf1715d1c4a9ed5157b130a66a73001f6f344c74438965e85d3cac84932082e6b17140f6eb901e3de7b3a16a76bdde2972c557d573830e8a455973de43201b562f63f5b3dca8555b5215fa138e81da900358ddb4d123b57b4a4cac0bfebc6ae3c7d54820ca1f3ee9908f7cb81200afeb1fdafdfbbc08b15d8271fd18cfd7344b36bdd16cca082235c3790888dae22e547bf436982c1a1935e2627f1bb16a3b4942f474d2ec1ff15eb6c3c4e320892ca1615ecd462007e51fbc69817719e6d641c101aa153bff207974bbb4f9553a8d6fb0cfa2cb1a497f9eee32f7c084e97256c72f06f020f33a0c079f3f69c2ce0e2826cc396587d80c9485e26f70633b70ad2e2d531a44407d101628c0bdae0cd47d6032e97b73e1231c3db06a2ead13eb20878fc198a345dd9dafc54b0cc56bcf9aa64e85002ff91a3f01dc97de5e85d68707a4909385cefbd6263cf9624a64d9052291da48d33ac401854cce4d6a7d21be4b5f1f4616e1784226603fdadd45d802ab226c81ec1fc1827310c2c99ce1c7ee28f38fbc7cf637132a1a2b1e5835762b41f0c7180a7738bac5cedebc11cdbf229e2155a085349b93cb94ce4285ea739673cc719e46cacb56663564057df1a0a2f688ed216336ff695337d6922f0185c23c3c04294388da192d9ae2b51ff18a8cc4d3212e1b2b19fed7b8f3662c2f9bd463f75e1e7c738db6b204f8f5aa8176e238d41c8d828b124e78c294be2d5b2bf0724958b787b0bea98d9a1534fc9975d66ee119b47b2e3017c9bba9431118c3611840b0ddcb00450024d484080d29c3896d92913eaca52d67f313a482fcc6ab616673926bdbdb1a2e62bcb055755ae5b3a975996e40736fde300717431c7d7b182369f90a092aef94e58e0ea5a4b15e76d".from_hex().unwrap(),
         };
-        let _ = sphinx_packet_unwrap(&params, &mix_state, packet);
+
+        let packet2 = packet.clone();
+        match sphinx_packet_unwrap(&params, &mix_state, packet) {
+            Ok(v) =>  println!("Ok"),
+            Err(e) => panic!("Err: {:?}", e),
+        }
+        match sphinx_packet_unwrap(&params, &mix_state, packet2) {
+            Ok(v) =>  panic!("expected replay error"),
+            Err(e) => return, // XXX check error type
+        }
     }
 }

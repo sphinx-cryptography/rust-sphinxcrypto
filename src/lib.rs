@@ -3,6 +3,7 @@
 //! Sphinx mixnet packet crypto
 
 extern crate crypto;
+extern crate rustc_serialize;
 
 #[macro_use]
 extern crate arrayref;
@@ -11,10 +12,3 @@ pub mod node;
 pub mod crypto_primitives;
 pub use crypto_primitives::{GroupCurve25519, SphinxDigest};
 
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-    }
-}
