@@ -269,7 +269,7 @@ impl SphinxParams {
 /// * `SphinxPacketError::InvalidHop(ClientHop)` - invalid client hop
 /// * `SphinxPacketError::InvalidHop(ProcessHop)` - invalid process hop
 ///
-pub fn sphinx_packet_unwrap<S: PacketReplayCache + MixPrivateKey>(params: &SphinxParams, state: &S, packet: SphinxPacket)
+pub fn sphinx_packet_unwrap<S: PacketReplayCache + MixPrivateKey>(params: &SphinxParams, state: &mut S, packet: SphinxPacket)
                                                                   -> Result<UnwrappedPacket, SphinxPacketError>
 {
     // derive shared secret from alpha using our private key
@@ -409,7 +409,7 @@ mod tests {
         let priv_key_bytes = "9863a8f1b5307938cd4bc9782411e9eea0a38b9144d096bd923085dfb8534277".from_hex().unwrap();
         let priv_key = array_ref!(priv_key_bytes, 0, 32);
 
-        let mix_state = VolatileMixState::new(*node_id, *pub_key, *priv_key);
+        let mut mix_state = VolatileMixState::new(*node_id, *pub_key, *priv_key);
         let packet = SphinxPacket{
             alpha: "cbe28bea4d68103461bc0cc2db4b6c4f38bc82af83f5f1de998c33d46c15f72d".from_hex().unwrap(),
             beta: "a5578dc72fcea3501169472b0877ca46627789750820b29a3298151e12e04781645f6007b6e773e4b7177a67adf30d0ec02c472ddf7609eba1a1130c80789832fb201eed849c02244465f39a70d7520d641be371020083946832d2f7da386d93b4627b0121502e5812209d674b3a108016618b2e9f210978f46faaa2a7e97a4d678a106631581cc51120946f5915ee2bfd9db11e5ec93ae7ffe4d4dc8ab66985cfe9da441b708e4e5dc7c00ea42abf1a".from_hex().unwrap(),
@@ -418,11 +418,11 @@ mod tests {
         };
 
         let packet2 = packet.clone();
-        match sphinx_packet_unwrap(&params, &mix_state, packet) {
+        match sphinx_packet_unwrap(&params, &mut mix_state, packet) {
             Ok(v) =>  println!("Ok"),
             Err(e) => panic!("Err: {:?}", e),
         }
-        match sphinx_packet_unwrap(&params, &mix_state, packet2) {
+        match sphinx_packet_unwrap(&params, &mut mix_state, packet2) {
             Ok(v) =>  panic!("expected replay error"),
             Err(e) => return, // XXX check error type
         }
