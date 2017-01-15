@@ -5,7 +5,7 @@
 extern crate lioness;
 extern crate rustc_serialize;
 
-use std::collections::HashMap;
+use std::collections::HashSet;
 pub use crypto_primitives::{GroupCurve25519, SphinxDigest,
                             SphinxLionessBlockCipher, SphinxStreamCipher, CURVE25519_SIZE};
 use self::lioness::xor;
@@ -48,7 +48,7 @@ pub trait MixPrivateKey {
 /// key material state and node identification.
 pub struct VolatileMixState {
     /// used to detect replays/duplicate packets
-    map: HashMap<[u8; 32], bool>,
+    map: HashSet<[u8; 32]>,
     /// node identification
     pub id: [u8; 16],
     /// public key
@@ -61,7 +61,7 @@ impl VolatileMixState {
     /// return a new VolatileMixState struct
     pub fn new(id: [u8; 16], public_key: [u8; 32], private_key: [u8; 32],) -> VolatileMixState {
         VolatileMixState{
-            map: HashMap::new(),
+            map: HashSet::new(),
             id: id,
             public_key: public_key,
             private_key: private_key,
@@ -77,26 +77,23 @@ impl MixPrivateKey for VolatileMixState {
 }
 
 impl PacketReplayCache for VolatileMixState {
-    /// return true if the given tag is present in our HashMap
+    /// return true if the given tag is present in our HashSet
     ///
     /// # Arguments
     /// * `tag` - a 32 byte value
     fn check(&self, tag: [u8; 32]) -> bool {
         println!("check tag {}", tag.to_hex());
-        match self.map.get(&tag) {
-            Some(_) => return true,
-            None => return false,
-        }
+        self.map.contains(&tag)
     }
 
-    /// remember the given tag in our HashMap
+    /// remember the given tag in our HashSet
     /// # Arguments
     /// * `tag` - a 32 byte value
     fn set(&mut self, tag: [u8; 32]) {
-        self.map.insert(tag, true);
+        self.map.insert(tag);
     }
 
-    /// clear the HashMap
+    /// clear the HashSet
     fn flush(&mut self) {
         self.map.clear();
     }
@@ -269,8 +266,9 @@ impl SphinxParams {
 /// * `SphinxPacketError::InvalidHop(ClientHop)` - invalid client hop
 /// * `SphinxPacketError::InvalidHop(ProcessHop)` - invalid process hop
 ///
-pub fn sphinx_packet_unwrap<S: PacketReplayCache + MixPrivateKey>(params: &SphinxParams, state: &mut S, packet: SphinxPacket)
-                                                                  -> Result<UnwrappedPacket, SphinxPacketError>
+pub fn sphinx_packet_unwrap<S>(params: &SphinxParams, state: &mut S, packet: SphinxPacket)
+  -> Result<UnwrappedPacket, SphinxPacketError>
+  where S: PacketReplayCache + MixPrivateKey
 {
     // derive shared secret from alpha using our private key
     let group = GroupCurve25519::new();
