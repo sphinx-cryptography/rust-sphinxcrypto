@@ -276,8 +276,10 @@ pub fn sphinx_packet_unwrap<S>(params: &SphinxParams, state: &mut S, packet: Sph
     for (place, element) in alpha_array.iter_mut().zip(packet.alpha.iter()) {
         *place = *element;
     }
-    let private_key = state.get_private_key();
-    let shared_secret = group.exp_on(&alpha_array, private_key.as_ref());
+    let shared_secret = {
+        let private_key = state.get_private_key();
+        group.exp_on(&alpha_array, private_key.as_ref()) 
+    };
 
     // derive HMAC key from shared secret
     let mut digest = SphinxDigest::new();
@@ -294,6 +296,7 @@ pub fn sphinx_packet_unwrap<S>(params: &SphinxParams, state: &mut S, packet: Sph
     if state.check(tag) {
         return Err(SphinxPacketError::DuplicatePacket)
     }
+    state.set(tag);
 
     // unwrap body, lioness decrypt block
     let mut block_cipher = SphinxLionessBlockCipher::new();
