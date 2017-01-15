@@ -420,12 +420,12 @@ mod tests {
 
         let packet2 = packet.clone();
         match sphinx_packet_unwrap(&params, &mut mix_state, packet) {
-            Ok(v) =>  println!("Ok"),
+            Ok(_) =>  println!("Ok"),
             Err(e) => panic!("Err: {:?}", e),
         }
         match sphinx_packet_unwrap(&params, &mut mix_state, packet2) {
-            Ok(v) =>  panic!("expected replay error"),
-            Err(e) => return, // XXX check error type
+            Ok(_) =>  panic!("expected replay error"),
+            Err(_) => return, // XXX check error type
         }
     }
 }
