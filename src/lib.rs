@@ -8,7 +8,7 @@ extern crate rustc_serialize;
 #[macro_use]
 extern crate arrayref;
 
-pub mod node;
 pub mod crypto_primitives;
-pub use crypto_primitives::{GroupCurve25519, SphinxDigest};
-
+pub use crypto_primitives::{SphinxDigest};
+pub mod ecdh;
+pub use ecdh::{PublicKey, PrivateKey};
