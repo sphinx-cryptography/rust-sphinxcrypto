@@ -4,7 +4,6 @@
 extern crate rand;
 use self::rand::{Rng};
 use self::rand::os::OsRng;
-
 use crypto::curve25519::{curve25519, curve25519_base};
 
 pub const CURVE25519_SIZE: usize = 32;

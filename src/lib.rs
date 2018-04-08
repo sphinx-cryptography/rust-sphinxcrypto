@@ -8,7 +8,6 @@ extern crate rustc_serialize;
 #[macro_use]
 extern crate arrayref;
 
-pub mod crypto_primitives;
-pub use crypto_primitives::{SphinxDigest};
+mod internal_crypto;
 pub mod ecdh;
-pub use ecdh::{PublicKey, PrivateKey};
+pub use ecdh::{PublicKey, PrivateKey, CURVE25519_SIZE};
