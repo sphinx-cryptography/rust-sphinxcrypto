@@ -1,4 +1,4 @@
-// Copyright 2016 Jeffrey Burdges and David Stainton
+// Copyright 2018 David Stainton
 
 //! Sphinx crypto primitives
 
@@ -16,13 +16,28 @@ use std::vec::Vec;
 
 use super::ecdh::CURVE25519_SIZE;
 
+/// the output size of the unkeyed hash in bytes
 pub const HASH_SIZE: usize = 32;
+
+/// the key size of the MAC in bytes
 pub const MAC_KEY_SIZE: usize = 32;
+
+/// the output size of the MAC in bytes.
 pub const MAC_SIZE: usize = 16;
+
+/// the key size of the stream cipher in bytes.
 pub const STREAM_KEY_SIZE: usize = 32;
+
+/// the IV size of the stream cipher in bytes.
 pub const STREAM_IV_SIZE: usize = 12;
+
+/// the key size of the SPRP in bytes.
 pub const SPRP_KEY_SIZE: usize = RAW_KEY_SIZE;
+
+/// the IV size of the SPRP in bytes.
 pub const SPRP_IV_SIZE: usize = IV_SIZE;
+
+/// the size of the DH group element in bytes.
 pub const GROUP_ELEMENT_SIZE: usize = CURVE25519_SIZE;
 
 const KDF_OUTPUT_SIZE: usize = MAC_KEY_SIZE + STREAM_KEY_SIZE + STREAM_IV_SIZE + SPRP_KEY_SIZE + GROUP_ELEMENT_SIZE;
@@ -34,7 +49,6 @@ pub struct StreamCipher {
 }
 
 impl StreamCipher {
-
     /// create a new StreamCipher struct
     pub fn new(&self, key: &[u8; 32], iv: &[u8; 32]) -> StreamCipher {
         StreamCipher {
@@ -51,6 +65,8 @@ impl StreamCipher {
     }
 }
 
+/// PacketKeys are the per-hop Sphinx Packet Keys, derived from the blinded
+/// DH key exchange.
 pub struct PacketKeys {
     header_mac: [u8; MAC_KEY_SIZE],
     header_encryption: [u8; STREAM_KEY_SIZE],
@@ -59,6 +75,7 @@ pub struct PacketKeys {
     blinding_factor: [u8; CURVE25519_SIZE],
 }
 
+/// kdf takes the input key material and returns the Sphinx Packet keys.
 pub fn kdf(input: &[u8; CURVE25519_SIZE]) -> *mut PacketKeys {
     let mut shake = Keccak::new_shake128();
     shake.update(input);
@@ -75,6 +92,7 @@ pub fn kdf(input: &[u8; CURVE25519_SIZE]) -> *mut PacketKeys {
     }
 }
 
+/// hash calculates the digest of a message
 pub fn hash(input: &[u8]) -> Vec<u8> {
     let mut h = Blake2b::new(HASH_SIZE);
     h.input(&input);
@@ -83,6 +101,7 @@ pub fn hash(input: &[u8]) -> Vec<u8> {
     output
 }
 
+/// hmac returns the hmac of the data using a given key
 pub fn hmac(key: &[u8; MAC_KEY_SIZE], data: &[u8]) -> [u8; MAC_SIZE] {
     let mut m = Blake2b::new_keyed(MAC_SIZE, &key[..]);
     m.input(data);
@@ -91,12 +110,16 @@ pub fn hmac(key: &[u8; MAC_KEY_SIZE], data: &[u8]) -> [u8; MAC_SIZE] {
     out
 }
 
+/// returns the plaintext of the message msg, decrypted via the
+/// Sphinx SPRP with a given key and IV.
 pub fn sprp_decrypt(key: &[u8; SPRP_KEY_SIZE], iv: &[u8; SPRP_IV_SIZE], msg: Vec<u8>) -> Vec<u8> {
     let mut output: Vec<u8> = Vec::with_capacity(msg.len());
     decrypt(key, iv, &mut output, &msg);
     output
 }
 
+/// returns the ciphertext of the message msg, encrypted via the
+/// Sphinx SPRP with a given key and IV.
 pub fn sprp_encrypt(key: &[u8; SPRP_KEY_SIZE], iv: &[u8; SPRP_IV_SIZE], msg: Vec<u8>) -> Vec<u8> {
     let mut output: Vec<u8> = Vec::with_capacity(msg.len());
     encrypt(key, iv, &mut output, &msg);

@@ -9,6 +9,10 @@ extern crate rust_lioness;
 #[macro_use]
 extern crate arrayref;
 
-mod internal_crypto;
+pub mod constants;
 pub mod ecdh;
 pub use ecdh::{PublicKey, PrivateKey, CURVE25519_SIZE};
+mod internal_crypto;
+pub mod commands;
+pub mod error;
+pub mod sphinx;
