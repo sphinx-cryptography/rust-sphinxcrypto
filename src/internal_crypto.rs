@@ -2,9 +2,11 @@
 
 //! Sphinx crypto primitives
 
+extern crate rust_lioness;
 extern crate crypto;
 extern crate tiny_keccak;
 
+use self::rust_lioness::{encrypt, decrypt, RAW_KEY_SIZE, IV_SIZE};
 use crypto::chacha20::ChaCha20;
 use crypto::symmetriccipher::SynchronousStreamCipher;
 use crypto::blake2b::Blake2b;
@@ -19,8 +21,8 @@ pub const MAC_KEY_SIZE: usize = 32;
 pub const MAC_SIZE: usize = 16;
 pub const STREAM_KEY_SIZE: usize = 32;
 pub const STREAM_IV_SIZE: usize = 12;
-pub const SPRP_KEY_SIZE: usize = 128;
-pub const SPRP_IV_SIZE: usize = 48;
+pub const SPRP_KEY_SIZE: usize = RAW_KEY_SIZE;
+pub const SPRP_IV_SIZE: usize = IV_SIZE;
 pub const GROUP_ELEMENT_SIZE: usize = CURVE25519_SIZE;
 
 const KDF_OUTPUT_SIZE: usize = MAC_KEY_SIZE + STREAM_KEY_SIZE + STREAM_IV_SIZE + SPRP_KEY_SIZE + GROUP_ELEMENT_SIZE;
@@ -71,4 +73,32 @@ pub fn kdf(input: &[u8; CURVE25519_SIZE]) -> *mut PacketKeys {
         payload_encryption: *a4,
         blinding_factor: *a5,
     }
+}
+
+pub fn hash(input: &[u8]) -> Vec<u8> {
+    let mut h = Blake2b::new(HASH_SIZE);
+    h.input(&input);
+    let mut output: Vec<u8> = Vec::with_capacity(HASH_SIZE);
+    h.result(output.as_mut_slice());
+    output
+}
+
+pub fn hmac(key: &[u8; MAC_KEY_SIZE], data: &[u8]) -> [u8; MAC_SIZE] {
+    let mut m = Blake2b::new_keyed(MAC_SIZE, &key[..]);
+    m.input(data);
+    let mut out = [0u8; 16];
+    m.result(&mut out);
+    out
+}
+
+pub fn sprp_decrypt(key: &[u8; SPRP_KEY_SIZE], iv: &[u8; SPRP_IV_SIZE], msg: Vec<u8>) -> Vec<u8> {
+    let mut output: Vec<u8> = Vec::with_capacity(msg.len());
+    decrypt(key, iv, &mut output, &msg);
+    output
+}
+
+pub fn sprp_encrypt(key: &[u8; SPRP_KEY_SIZE], iv: &[u8; SPRP_IV_SIZE], msg: Vec<u8>) -> Vec<u8> {
+    let mut output: Vec<u8> = Vec::with_capacity(msg.len());
+    encrypt(key, iv, &mut output, &msg);
+    output
 }

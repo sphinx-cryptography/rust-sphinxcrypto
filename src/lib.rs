@@ -4,6 +4,7 @@
 
 extern crate crypto;
 extern crate rustc_serialize;
+extern crate rust_lioness;
 
 #[macro_use]
 extern crate arrayref;
