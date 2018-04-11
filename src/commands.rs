@@ -10,9 +10,32 @@ const NEXT_HOP_SIZE: usize = 1 + NODE_ID_SIZE + MAC_SIZE;
 /// Sphinx routing commands.
 const NEXT_HOP: u8 = 0x1;
 
-/// RoutingCommand is a trait representing 
+/// RoutingCommand is a trait representing
+/// Sphinx routing commands
 pub trait RoutingCommand {
-    fn to_bytes(&self) -> Vec<u8>;
+    fn to_vec(&self) -> Vec<u8>;
+}
+
+/// from_bytes reads from a byte slice and returns a decoded
+/// routing command and the rest of the buffer.
+pub fn from_bytes(b: &[u8]) -> Result<(Box<RoutingCommand>, Vec<u8>), &'static str> {
+    let cmd_id = b[0];
+    let mut c = Vec::new();
+    c.clone_from_slice(&b[1..]);
+    match cmd_id {
+        NextHop => {
+            let mut id = [0u8; NODE_ID_SIZE];
+            id.copy_from_slice(&c[..NODE_ID_SIZE]);
+            let mut mac = [0u8; MAC_SIZE];
+            mac.clone_from_slice(&c[NODE_ID_SIZE..NODE_ID_SIZE+MAC_SIZE]);
+            let next_hop = NextHop{
+                id: id,
+                mac: mac,
+            };
+            return Ok((Box::new(next_hop), b[NEXT_HOP_SIZE..].to_vec()))
+        }
+    }
+    Err("error failed to decode command(s) from bytes")
 }
 
 #[derive(Copy,Clone)]
@@ -22,7 +45,7 @@ pub struct NextHop {
 }
 
 impl RoutingCommand for NextHop {
-    fn to_bytes(&self) -> Vec<u8> {
+    fn to_vec(&self) -> Vec<u8> {
         let mut out = Vec::new();
         out.push(NEXT_HOP);
         out.extend_from_slice(&self.id);
