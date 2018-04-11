@@ -1,6 +1,8 @@
 // commands.rs - sphinx cryptographic packet format commands
 // Copyright (C) 2018  David Stainton.
 
+use std::ops::Deref;
+
 use super::constants::{NODE_ID_SIZE, RECIPIENT_ID_SIZE, SURB_ID_SIZE};
 use super::internal_crypto::{MAC_SIZE};
 
@@ -123,7 +125,10 @@ mod tests {
         };
         let raw = cmd.to_vec();
         let (boxed_cmd, rest) = from_bytes(&raw).unwrap();
-        // XXX how to get NextHop pointer from (*Box::into_raw(boxed_cmd))
+        let trait_ptr: *mut RoutingCommand = Box::into_raw(boxed_cmd);
+        let cmd_p: Box<NextHop> = unsafe { Box::from_raw(trait_ptr as *mut NextHop) };
+        assert_eq!(cmd.id, cmd_p.id);
+        assert_eq!(cmd.mac, cmd_p.mac);
     }
     
     #[test]
