@@ -39,23 +39,12 @@ pub fn from_bytes(b: &[u8]) -> Result<(Box<RoutingCommand>, Vec<u8>), &'static s
     let cmd_id = b[0];
     match cmd_id {
         NEXT_HOP_CMD => {
-            let mut id = [0u8; NODE_ID_SIZE];
-            id.copy_from_slice(&b[1..NODE_ID_SIZE+1]);
-            let mut mac = [0u8; MAC_SIZE];
-            mac.clone_from_slice(&b[1+NODE_ID_SIZE..NODE_ID_SIZE+MAC_SIZE+1]);
-            let next_hop = NextHop{
-                id: id,
-                mac: mac,
-            };
-            return Ok((Box::new(next_hop), b[NEXT_HOP_SIZE..].to_vec()));
+            let (next_hop_cmd, rest) = next_hop_from_bytes(&b[1..]).unwrap();
+            return Ok((Box::new(next_hop_cmd), rest))
         }
         RECIPIENT_CMD => {
-            let mut id = [0u8; RECIPIENT_ID_SIZE];
-            id.copy_from_slice(&b[1..RECIPIENT_ID_SIZE+1]);
-            let recipient = Recipient{
-                id: id,
-            };
-            return Ok((Box::new(recipient), b[RECIPIENT_SIZE..].to_vec()));
+            let (recipient_cmd, rest) = recipient_from_bytes(&b[1..]).unwrap();
+            return Ok((Box::new(recipient_cmd), rest))
         }
         _ => {
             return Err("error failed to decode command(s) from bytes");
@@ -64,6 +53,8 @@ pub fn from_bytes(b: &[u8]) -> Result<(Box<RoutingCommand>, Vec<u8>), &'static s
     Err("error failed to decode command(s) from bytes")
 }
 
+/// The next hop command is used to route
+/// the Sphinx packet onto the next hop.
 pub struct NextHop {
     id: [u8; NODE_ID_SIZE],
     mac: [u8; MAC_SIZE],
@@ -94,6 +85,8 @@ fn next_hop_from_bytes(b: &[u8]) -> Result<(NextHop, Vec<u8>), &'static str> {
     return Ok((cmd, b[NEXT_HOP_SIZE-1..].to_vec()))
 }
 
+/// The recipient command is used to deliver a payload
+/// to the specified message queue.
 pub struct Recipient {
     id: [u8; RECIPIENT_ID_SIZE],
 }
