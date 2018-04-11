@@ -49,6 +49,14 @@ pub fn from_bytes(b: &[u8]) -> Result<(Box<RoutingCommand>, Vec<u8>), &'static s
             };
             return Ok((Box::new(next_hop), b[NEXT_HOP_SIZE..].to_vec()));
         }
+        RECIPIENT_CMD => {
+            let mut id = [0u8; RECIPIENT_ID_SIZE];
+            id.copy_from_slice(&b[1..RECIPIENT_ID_SIZE+1]);
+            let recipient = Recipient{
+                id: id,
+            };
+            return Ok((Box::new(recipient), b[RECIPIENT_SIZE..].to_vec()));
+        }
         _ => {
             return Err("error failed to decode command(s) from bytes");
         }
@@ -56,7 +64,6 @@ pub fn from_bytes(b: &[u8]) -> Result<(Box<RoutingCommand>, Vec<u8>), &'static s
     Err("error failed to decode command(s) from bytes")
 }
 
-#[derive(Copy,Clone)]
 pub struct NextHop {
     id: [u8; NODE_ID_SIZE],
     mac: [u8; MAC_SIZE],
@@ -87,10 +94,30 @@ fn next_hop_from_bytes(b: &[u8]) -> Result<(NextHop, Vec<u8>), &'static str> {
     return Ok((cmd, b[NEXT_HOP_SIZE-1..].to_vec()))
 }
 
-#[derive(Copy,Clone)]
-pub struct Recipient {}
+pub struct Recipient {
+    id: [u8; RECIPIENT_ID_SIZE],
+}
 
+impl RoutingCommand for Recipient {
+    fn to_vec(&self) -> Vec<u8> {
+        let mut out = Vec::new();
+        out.push(RECIPIENT_CMD);
+        out.extend_from_slice(&self.id);
+        out
+    }
+}
 
+fn recipient_from_bytes(b: &[u8]) -> Result<(Recipient, Vec<u8>), &'static str> {
+    if b.len() < RECIPIENT_SIZE-1 {
+        return Err("invalid command error")
+    }
+    let mut id = [0u8; RECIPIENT_ID_SIZE];
+    id.copy_from_slice(&b[..RECIPIENT_ID_SIZE]);
+    let cmd = Recipient{
+        id: id,
+    };
+    return Ok((cmd, b[RECIPIENT_SIZE-1..].to_vec()))
+}
 
 #[cfg(test)]
 mod tests {
@@ -102,13 +129,13 @@ mod tests {
     use self::rand::os::OsRng;
     use self::rustc_serialize::hex::ToHex;
 
-    use super::super::constants::{NODE_ID_SIZE};
+    use super::super::constants::{NODE_ID_SIZE, RECIPIENT_ID_SIZE};
     use super::super::internal_crypto::{MAC_SIZE};
 
     #[test]
     fn from_bytes_test() {
 
-        // next_hop case
+        // next hop command case
         let mut rnd = OsRng::new().unwrap();
 
         let id = rnd.gen_iter::<u8>().take(NODE_ID_SIZE).collect::<Vec<u8>>();
@@ -123,32 +150,31 @@ mod tests {
             id: idArr,
             mac: macArr,
         };
-        let raw = cmd.to_vec();
-        let (boxed_cmd, rest) = from_bytes(&raw).unwrap();
+        let raw1 = cmd.to_vec();
+        let (boxed_cmd, rest) = from_bytes(&raw1).unwrap();
         let trait_ptr: *mut RoutingCommand = Box::into_raw(boxed_cmd);
         let cmd_p: Box<NextHop> = unsafe { Box::from_raw(trait_ptr as *mut NextHop) };
         assert_eq!(cmd.id, cmd_p.id);
         assert_eq!(cmd.mac, cmd_p.mac);
-    }
-    
-    #[test]
-    fn next_hop_test() {
+        let raw2 = cmd.to_vec();
+        assert_eq!(raw1, raw2);
+
+
+        // recipient command case
         let mut rnd = OsRng::new().unwrap();
 
-        let id = rnd.gen_iter::<u8>().take(NODE_ID_SIZE).collect::<Vec<u8>>();
-        let mut idArr = [0u8; NODE_ID_SIZE];
+        let id = rnd.gen_iter::<u8>().take(RECIPIENT_ID_SIZE).collect::<Vec<u8>>();
+        let mut idArr = [0u8; RECIPIENT_ID_SIZE];
         idArr.copy_from_slice(id.as_slice());
 
-        let mac = rnd.gen_iter::<u8>().take(MAC_SIZE).collect::<Vec<u8>>();
-        let mut macArr = [0u8; MAC_SIZE];
-        macArr.copy_from_slice(mac.as_slice());
-        
-        let cmd1 = NextHop{
+        let cmd = Recipient{
             id: idArr,
-            mac: macArr,
         };
-        let raw1 = cmd1.to_vec();
-        let (cmd, rest) = super::next_hop_from_bytes(&raw1[1..]).unwrap();     
+        let raw1 = cmd.to_vec();
+        let (boxed_cmd, rest) = from_bytes(&raw1).unwrap();
+        let trait_ptr: *mut RoutingCommand = Box::into_raw(boxed_cmd);
+        let cmd_p: Box<Recipient> = unsafe { Box::from_raw(trait_ptr as *mut Recipient) };
+        assert_eq!(cmd.id.to_vec(), cmd_p.id.to_vec());
         let raw2 = cmd.to_vec();
         assert_eq!(raw1, raw2);
     }
