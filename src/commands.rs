@@ -46,6 +46,10 @@ pub fn from_bytes(b: &[u8]) -> Result<(Box<RoutingCommand>, Vec<u8>), &'static s
             let (recipient_cmd, rest) = recipient_from_bytes(&b[1..]).unwrap();
             return Ok((Box::new(recipient_cmd), rest))
         }
+        SURB_REPLY_CMD => {
+            let (surb_reply_cmd, rest) = surb_reply_from_bytes(&b[1..]).unwrap();
+            return Ok((Box::new(surb_reply_cmd), rest))
+        }
         _ => {
             return Err("error failed to decode command(s) from bytes");
         }
@@ -112,6 +116,33 @@ fn recipient_from_bytes(b: &[u8]) -> Result<(Recipient, Vec<u8>), &'static str> 
     return Ok((cmd, b[RECIPIENT_SIZE-1..].to_vec()))
 }
 
+/// This command is used by a SURB reply on it's last hop.
+pub struct SURBReply {
+    id: [u8; SURB_ID_SIZE],
+}
+
+impl RoutingCommand for SURBReply {
+    fn to_vec(&self) -> Vec<u8> {
+        let mut out = Vec::new();
+        out.push(SURB_REPLY_CMD);
+        out.extend_from_slice(&self.id);
+        out
+    }
+}
+
+fn surb_reply_from_bytes(b: &[u8]) -> Result<(SURBReply, Vec<u8>), &'static str> {
+    if b.len() < SURB_REPLY_SIZE-1 {
+        return Err("invalid command error")
+    }
+    let mut id = [0u8; SURB_ID_SIZE];
+    id.copy_from_slice(&b[..SURB_ID_SIZE]);
+    let cmd = SURBReply{
+        id: id,
+    };
+    return Ok((cmd, b[SURB_REPLY_SIZE-1..].to_vec()))
+}
+
+
 #[cfg(test)]
 mod tests {
     extern crate rand;
@@ -122,7 +153,7 @@ mod tests {
     use self::rand::os::OsRng;
     use self::rustc_serialize::hex::ToHex;
 
-    use super::super::constants::{NODE_ID_SIZE, RECIPIENT_ID_SIZE};
+    use super::super::constants::{NODE_ID_SIZE, RECIPIENT_ID_SIZE, SURB_ID_SIZE};
     use super::super::internal_crypto::{MAC_SIZE};
 
     #[test]
@@ -167,6 +198,25 @@ mod tests {
         let (boxed_cmd, rest) = from_bytes(&raw1).unwrap();
         let trait_ptr: *mut RoutingCommand = Box::into_raw(boxed_cmd);
         let cmd_p: Box<Recipient> = unsafe { Box::from_raw(trait_ptr as *mut Recipient) };
+        assert_eq!(cmd.id.to_vec(), cmd_p.id.to_vec());
+        let raw2 = cmd.to_vec();
+        assert_eq!(raw1, raw2);
+
+
+        // surb reply command case
+        let mut rnd = OsRng::new().unwrap();
+
+        let id = rnd.gen_iter::<u8>().take(SURB_ID_SIZE).collect::<Vec<u8>>();
+        let mut idArr = [0u8; SURB_ID_SIZE];
+        idArr.copy_from_slice(id.as_slice());
+
+        let cmd = SURBReply{
+            id: idArr,
+        };
+        let raw1 = cmd.to_vec();
+        let (boxed_cmd, rest) = from_bytes(&raw1).unwrap();
+        let trait_ptr: *mut RoutingCommand = Box::into_raw(boxed_cmd);
+        let cmd_p: Box<SURBReply> = unsafe { Box::from_raw(trait_ptr as *mut SURBReply) };
         assert_eq!(cmd.id.to_vec(), cmd_p.id.to_vec());
         let raw2 = cmd.to_vec();
         assert_eq!(raw1, raw2);
