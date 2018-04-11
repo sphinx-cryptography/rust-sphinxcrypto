@@ -2,6 +2,7 @@
 // Copyright (C) 2018  David Stainton.
 
 use std::ops::Deref;
+use byteorder::{ByteOrder, BigEndian};
 
 use super::constants::{NODE_ID_SIZE, RECIPIENT_ID_SIZE, SURB_ID_SIZE};
 use super::internal_crypto::{MAC_SIZE};
@@ -49,6 +50,10 @@ pub fn from_bytes(b: &[u8]) -> Result<(Box<RoutingCommand>, Vec<u8>), &'static s
         SURB_REPLY_CMD => {
             let (surb_reply_cmd, rest) = surb_reply_from_bytes(&b[1..]).unwrap();
             return Ok((Box::new(surb_reply_cmd), rest))
+        }
+        DELAY_CMD => {
+            let (delay_cmd, rest) = delay_from_bytes(&b[1..]).unwrap();
+            return Ok((Box::new(delay_cmd), rest))
         }
         _ => {
             return Err("error failed to decode command(s) from bytes");
@@ -142,6 +147,34 @@ fn surb_reply_from_bytes(b: &[u8]) -> Result<(SURBReply, Vec<u8>), &'static str>
     return Ok((cmd, b[SURB_REPLY_SIZE-1..].to_vec()))
 }
 
+/// This command is used by for the Poisson mix strategy
+/// where clients compose the Sphinx packet with the
+/// per hop delay of their choosing.
+pub struct Delay {
+    delay: u32,
+}
+
+impl RoutingCommand for Delay {
+    fn to_vec(&self) -> Vec<u8> {
+        let mut out = Vec::new();
+        out.push(DELAY_CMD);
+        let mut delay = [0; 4];
+        BigEndian::write_u32(&mut delay, self.delay);
+        out.extend_from_slice(&delay);
+        out
+    }
+}
+
+fn delay_from_bytes(b: &[u8]) -> Result<(Delay, Vec<u8>), &'static str> {
+    if b.len() < DELAY_SIZE-1 {
+        return Err("invalid command error")
+    }
+    let cmd = Delay{
+        delay: BigEndian::read_u32(b),
+    };
+    return Ok((cmd, b[DELAY_SIZE-1..].to_vec()))
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -218,6 +251,18 @@ mod tests {
         let trait_ptr: *mut RoutingCommand = Box::into_raw(boxed_cmd);
         let cmd_p: Box<SURBReply> = unsafe { Box::from_raw(trait_ptr as *mut SURBReply) };
         assert_eq!(cmd.id.to_vec(), cmd_p.id.to_vec());
+        let raw2 = cmd.to_vec();
+        assert_eq!(raw1, raw2);
+
+        // delay command case
+        let cmd = Delay{
+            delay: 3,
+        };
+        let raw1 = cmd.to_vec();
+        let (boxed_cmd, rest) = from_bytes(&raw1).unwrap();
+        let trait_ptr: *mut RoutingCommand = Box::into_raw(boxed_cmd);
+        let cmd_p: Box<Delay> = unsafe { Box::from_raw(trait_ptr as *mut Delay) };
+        assert_eq!(cmd.delay, cmd_p.delay);
         let raw2 = cmd.to_vec();
         assert_eq!(raw1, raw2);
     }
