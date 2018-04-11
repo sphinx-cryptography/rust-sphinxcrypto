@@ -6,6 +6,7 @@ extern crate crypto;
 extern crate rustc_serialize;
 extern crate byteorder;
 extern crate rust_lioness;
+extern crate subtle;
 
 #[macro_use]
 extern crate arrayref;
