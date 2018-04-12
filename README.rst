@@ -1,13 +1,13 @@
 
-rust crate providing Sphinx mix network cryptography
-====================================================
+rust-sphinxcrypto
+=================
 
-.. image:: https://travis-ci.org/applied-mixnetworks/rust-sphinxcrypto.png?branch=master
-    :target: https://www.travis-ci.org/applied-mixnetworks/rust-sphinxcrypto
+.. image:: https://travis-ci.org/david415/rust-sphinxcrypto.png?branch=master
+    :target: https://www.travis-ci.org/david415/rust-sphinxcrypto
     :alt: travis build status
 
-.. image:: https://coveralls.io/repos/github/applied-mixnetworks/rust-sphinxcrypto/badge.svg?branch=master
-  :target: https://coveralls.io/github/applied-mixnetworks/rust-sphinxcrypto
+.. image:: https://coveralls.io/repos/github/david415/rust-sphinxcrypto/badge.svg?branch=master
+  :target: https://coveralls.io/github/david415/rust-sphinxcrypto
   :alt: coveralls
 
 .. image:: https://docs.rs/sphinxcrypto/badge.svg
@@ -19,19 +19,35 @@ rust crate providing Sphinx mix network cryptography
   :alt: crates.io link
 
 
+This crate provides a concrete parameterization of the Sphinx
+cryptographic packet format.
+
+
 Warning
-=======
-This code has not been formally audited by a cryptographer. It therefore should not
-be considered safe or correct. Use it at your own risk!
+-------
+This code has not been formally audited by a cryptographer. It
+therefore should not be considered safe or correct. Use it at your own
+risk!
+
+
+Details
+-------
+
+Sphinx is described in **Sphinx: A Compact and Provably Secure Mix
+Format** by George Danezis and Ian Goldberg. See
+<http://research.microsoft.com/en-us/um/people/gdane/papers/sphinx-eprint.pdf>.
+
+A specification document for Sphinx was also written:
+https://github.com/katzenpost/docs/blob/master/specs/sphinx.txt
 
 
 Status
-======
+------
 
-Incomplete. Only the mix cryptographic "unwrap" operation has been implemented so far.
+Incomplete. Work-in-progress.
 
 
 license
-=======
+-------
 
 MIT License
