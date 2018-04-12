@@ -2,18 +2,33 @@
 // Copyright (C) 2018  David Stainton.
 
 extern crate rand;
+extern crate sodiumoxide;
+extern crate core;
+
 use self::rand::{Rng};
 use self::rand::os::OsRng;
-use crypto::curve25519::{curve25519, curve25519_base};
+use sodiumoxide::crypto::scalarmult::curve25519::{Scalar, GroupElement, scalarmult, scalarmult_base};
+use self::core::ops::RangeFull;
 
 pub const CURVE25519_SIZE: usize = 32;
 
-pub fn exp(x: &[u8], y: &[u8]) -> [u8; 32] {
-    curve25519(y, x)
+pub fn exp(x: &[u8; CURVE25519_SIZE], y: &[u8; CURVE25519_SIZE]) -> [u8; 32] {
+    let group_element = GroupElement(*x);
+    let g = scalarmult(&Scalar(*y), &group_element).unwrap();
+    let mut out = [0u8; CURVE25519_SIZE];
+    for (l, r) in out.iter_mut().zip(g[..].iter()) {
+        *l = *r;
+    }
+    out
 }
 
-pub fn exp_g(x: &[u8]) -> [u8; 32] {
-    curve25519_base(x)
+pub fn exp_g(x: &[u8; CURVE25519_SIZE]) -> [u8; 32] {
+    let g = scalarmult_base(&Scalar(*x));
+    let mut out = [0u8; CURVE25519_SIZE];
+    for (l, r) in out.iter_mut().zip(g[..].iter()) {
+        *l = *r;
+    }
+    out
 }
 
 #[derive(Clone, Copy, Default)]
@@ -28,6 +43,10 @@ impl PublicKey {
 
     pub fn to_vec(&self) -> Vec<u8> {
         self._key.to_vec()
+    }
+
+    pub fn as_array(&self) -> [u8; CURVE25519_SIZE] {
+        self._key
     }
 
     pub fn from_bytes(&mut self, b: &[u8]) -> Result<(), &'static str> {
@@ -52,27 +71,32 @@ impl PrivateKey {
     pub fn generate() -> Result<PrivateKey,()> {
         let mut rnd = OsRng::new().unwrap();
         let raw_key = rnd.gen_iter::<u8>().take(CURVE25519_SIZE).collect::<Vec<u8>>();
-        let pub_key = PublicKey{
-            _key: exp_g(&raw_key),
-        };
-        let mut priv_key_array = [0u8; CURVE25519_SIZE];
-        for (l, r) in priv_key_array.iter_mut().zip(raw_key.iter()) {
+        let mut raw_arr = [0u8; CURVE25519_SIZE];
+        for (l, r) in raw_arr.iter_mut().zip(raw_key.iter()) {
             *l = *r;
         }
+        let pub_key = PublicKey{
+            _key: exp_g(&raw_arr),
+        };
+        let mut priv_key_array = [0u8; CURVE25519_SIZE];
         let key = PrivateKey{
             public_key: pub_key,
-            _priv_bytes: priv_key_array,
+            _priv_bytes: raw_arr,
         };
         Ok(key)
     }
     
     /// Exp calculates the shared secret with the provided public key.
     pub fn exp(&self, public_key: &PublicKey) -> [u8; CURVE25519_SIZE] {
-        exp(public_key.to_vec().as_slice(), &self._priv_bytes)
+        exp(&public_key._key, &self._priv_bytes)
     }
     
     pub fn to_vec(&self) -> Vec<u8> {
         self._priv_bytes.to_vec()
+    }
+
+    pub fn as_array(&self) -> [u8; CURVE25519_SIZE] {
+        self._priv_bytes
     }
 
     pub fn from_bytes(&mut self, b: &[u8]) -> Result<(), &'static str> {
@@ -103,9 +127,9 @@ mod tests {
         let raw = rnd.gen_iter::<u8>().take(CURVE25519_SIZE).collect::<Vec<u8>>();
         bob_sk.copy_from_slice(raw.as_slice());
         let bob_pk = exp_g(&bob_sk);
-        let tmp1 = exp_g(alice_private_key.to_vec().as_slice());
+        let tmp1 = exp_g(&alice_private_key.as_array());
         assert_eq!(tmp1, alice_private_key.public_key._key);
-        let alice_s = exp(&bob_pk, alice_private_key.to_vec().as_slice());
+        let alice_s = exp(&bob_pk, &alice_private_key.as_array());
         let bob_s = exp(&alice_private_key.public_key._key, &bob_sk);
         assert_eq!(alice_s, bob_s);
     }

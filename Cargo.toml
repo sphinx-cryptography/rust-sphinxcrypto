@@ -11,6 +11,7 @@ keywords = ["cryptography", "sphinx", "mixnet", "crypto", "mix"]
 license = "MIT"
 
 [dependencies]
+sodiumoxide = "0.0.16"
 rust-crypto = "^0.2"
 rust-lioness = "^0.1.3"
 arrayref = "^0.3"

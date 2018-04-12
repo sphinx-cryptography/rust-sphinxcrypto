@@ -2,6 +2,7 @@
 
 //! Sphinx mixnet packet crypto
 
+extern crate sodiumoxide;
 extern crate crypto;
 extern crate rustc_serialize;
 extern crate byteorder;
