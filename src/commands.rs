@@ -11,10 +11,10 @@ use super::internal_crypto::{MAC_SIZE};
 const NEXT_HOP_SIZE: usize = 1 + NODE_ID_SIZE + MAC_SIZE;
 
 /// size of the recipient command in bytes
-const RECIPIENT_SIZE: usize = 1 + RECIPIENT_ID_SIZE;
+pub const RECIPIENT_SIZE: usize = 1 + RECIPIENT_ID_SIZE;
 
 /// size of the SURB reply command in bytes
-const SURB_REPLY_SIZE: usize = 1 + SURB_ID_SIZE;
+pub const SURB_REPLY_SIZE: usize = 1 + SURB_ID_SIZE;
 
 /// size of the delay command in bytes
 const DELAY_SIZE: usize = 1 + 4;
@@ -34,25 +34,38 @@ pub trait RoutingCommand {
     fn to_vec(&self) -> Vec<u8>;
 }
 
+/// Parse the per-hop routing commands.
+pub fn parse_routing_cmmands(b: &[u8]) -> Result<Vec<Box<RoutingCommand>>, &'static str> {
+    let mut ret = Vec::new();
+    while true {
+        let (boxed_cmd, rest) = from_bytes(b)?;
+        ret.push(boxed_cmd);
+        if rest.len() == 0 {
+            break;
+        }
+    }
+    return Ok(ret);
+}
+
 /// from_bytes reads from a byte slice and returns a decoded
 /// routing command and the rest of the buffer.
 pub fn from_bytes(b: &[u8]) -> Result<(Box<RoutingCommand>, Vec<u8>), &'static str> {
     let cmd_id = b[0];
     match cmd_id {
         NEXT_HOP_CMD => {
-            let (next_hop_cmd, rest) = next_hop_from_bytes(&b[1..]).unwrap();
+            let (next_hop_cmd, rest) = next_hop_from_bytes(&b[1..])?;
             return Ok((Box::new(next_hop_cmd), rest))
         }
         RECIPIENT_CMD => {
-            let (recipient_cmd, rest) = recipient_from_bytes(&b[1..]).unwrap();
+            let (recipient_cmd, rest) = recipient_from_bytes(&b[1..])?;
             return Ok((Box::new(recipient_cmd), rest))
         }
         SURB_REPLY_CMD => {
-            let (surb_reply_cmd, rest) = surb_reply_from_bytes(&b[1..]).unwrap();
+            let (surb_reply_cmd, rest) = surb_reply_from_bytes(&b[1..])?;
             return Ok((Box::new(surb_reply_cmd), rest))
         }
         DELAY_CMD => {
-            let (delay_cmd, rest) = delay_from_bytes(&b[1..]).unwrap();
+            let (delay_cmd, rest) = delay_from_bytes(&b[1..])?;
             return Ok((Box::new(delay_cmd), rest))
         }
         _ => {

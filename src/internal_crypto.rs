@@ -50,7 +50,7 @@ pub struct StreamCipher {
 
 impl StreamCipher {
     /// create a new StreamCipher struct
-    pub fn new(&self, key: &[u8; 32], iv: &[u8; 32]) -> StreamCipher {
+    pub fn new(key: &[u8; STREAM_KEY_SIZE], iv: &[u8; STREAM_IV_SIZE]) -> StreamCipher {
         StreamCipher {
             cipher: ChaCha20::new(key, iv),
         }
@@ -63,27 +63,31 @@ impl StreamCipher {
         self.cipher.process(zeros.as_slice(), output.as_mut_slice());
         output
     }
+
+    pub fn xor_key_stream(&mut self, mut dst: &mut [u8], src: &[u8]) {
+        self.cipher.process(&src, &mut dst);
+    }
 }
 
 /// PacketKeys are the per-hop Sphinx Packet Keys, derived from the blinded
 /// DH key exchange.
 pub struct PacketKeys {
-    header_mac: [u8; MAC_KEY_SIZE],
-    header_encryption: [u8; STREAM_KEY_SIZE],
-    header_encryption_iv: [u8; STREAM_IV_SIZE],
-    payload_encryption: [u8; SPRP_KEY_SIZE],
-    blinding_factor: [u8; CURVE25519_SIZE],
+    pub header_mac: [u8; MAC_KEY_SIZE],
+    pub header_encryption: [u8; STREAM_KEY_SIZE],
+    pub header_encryption_iv: [u8; STREAM_IV_SIZE],
+    pub payload_encryption: [u8; SPRP_KEY_SIZE],
+    pub blinding_factor: [u8; CURVE25519_SIZE],
 }
 
 /// kdf takes the input key material and returns the Sphinx Packet keys.
-pub fn kdf(input: &[u8; CURVE25519_SIZE]) -> *mut PacketKeys {
+pub fn kdf(input: &[u8; CURVE25519_SIZE]) -> PacketKeys {
     let mut shake = Keccak::new_shake128();
     shake.update(input);
     let mut xof = shake.xof();
     let mut output = [0u8; KDF_OUTPUT_SIZE];
     xof.squeeze(&mut output);
     let (a1,a2,a3,a4,a5) = array_refs![&output,MAC_KEY_SIZE,STREAM_KEY_SIZE,STREAM_IV_SIZE,SPRP_KEY_SIZE,GROUP_ELEMENT_SIZE];
-    &mut PacketKeys{
+    PacketKeys{
         header_mac: *a1,
         header_encryption: *a2,
         header_encryption_iv: *a3,
