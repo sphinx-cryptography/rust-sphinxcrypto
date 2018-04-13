@@ -1,8 +1,8 @@
 // commands.rs - sphinx cryptographic packet format commands
 // Copyright (C) 2018  David Stainton.
 
-use std::ops::Deref;
 use byteorder::{ByteOrder, BigEndian};
+use std::any::Any;
 
 use super::constants::{NODE_ID_SIZE, RECIPIENT_ID_SIZE, SURB_ID_SIZE};
 use super::internal_crypto::{MAC_SIZE};
@@ -35,21 +35,41 @@ pub trait RoutingCommand {
 }
 
 /// Parse the per-hop routing commands.
-pub fn parse_routing_cmmands(b: &[u8]) -> Result<Vec<Box<RoutingCommand>>, &'static str> {
+pub fn parse_routing_commands(b: &[u8]) -> Result<(Vec<Box<Any>>, Option<NextHop>, Option<SURBReply>), &'static str> {
     let mut ret = Vec::new();
+    let mut maybe_next_hop: Option<NextHop> = None;
+    let mut maybe_surb_reply: Option<SURBReply> = None;
+    let mut b_copy = Vec::new();
+    b_copy.clone_from_slice(b);
+
     while true {
-        let (boxed_cmd, rest) = from_bytes(b)?;
+        let (boxed_cmd, rest) = from_bytes(&b_copy)?;
+
+        // next hop
+        let result = boxed_cmd.downcast_ref::<NextHop>();
+        if result.is_some() {
+            maybe_next_hop = Some((*result.expect("value")).clone());
+        }
+
+        // surb reply
+        let result = boxed_cmd.downcast_ref::<SURBReply>();
+        if result.is_some() {
+            maybe_surb_reply = Some((*result.expect("value")).clone());
+        }
+
+        let (boxed_cmd, rest) = from_bytes(&b)?;
         ret.push(boxed_cmd);
+
         if rest.len() == 0 {
             break;
         }
     }
-    return Ok(ret);
+    return Ok((ret, maybe_next_hop, maybe_surb_reply));
 }
 
 /// from_bytes reads from a byte slice and returns a decoded
 /// routing command and the rest of the buffer.
-pub fn from_bytes(b: &[u8]) -> Result<(Box<RoutingCommand>, Vec<u8>), &'static str> {
+pub fn from_bytes(b: &[u8]) -> Result<(Box<Any>, Vec<u8>), &'static str> {
     let cmd_id = b[0];
     match cmd_id {
         NEXT_HOP_CMD => {
@@ -77,9 +97,10 @@ pub fn from_bytes(b: &[u8]) -> Result<(Box<RoutingCommand>, Vec<u8>), &'static s
 
 /// The next hop command is used to route
 /// the Sphinx packet onto the next hop.
+#[derive(Clone)]
 pub struct NextHop {
     id: [u8; NODE_ID_SIZE],
-    mac: [u8; MAC_SIZE],
+    pub mac: [u8; MAC_SIZE],
 }
 
 impl RoutingCommand for NextHop {
@@ -135,6 +156,7 @@ fn recipient_from_bytes(b: &[u8]) -> Result<(Recipient, Vec<u8>), &'static str> 
 }
 
 /// This command is used by a SURB reply on it's last hop.
+#[derive(Clone)]
 pub struct SURBReply {
     id: [u8; SURB_ID_SIZE],
 }
@@ -195,6 +217,7 @@ mod tests {
     extern crate rustc_serialize;
 
     use super::*;
+    use std::any::Any;
     use self::rand::Rng;
     use self::rand::os::OsRng;
     use self::rustc_serialize::hex::ToHex;
@@ -222,7 +245,7 @@ mod tests {
         };
         let raw1 = cmd.to_vec();
         let (boxed_cmd, rest) = from_bytes(&raw1).unwrap();
-        let trait_ptr: *mut RoutingCommand = Box::into_raw(boxed_cmd);
+        let trait_ptr: *mut Any = Box::into_raw(boxed_cmd);
         let cmd_p: Box<NextHop> = unsafe { Box::from_raw(trait_ptr as *mut NextHop) };
         assert_eq!(cmd.id, cmd_p.id);
         assert_eq!(cmd.mac, cmd_p.mac);
@@ -242,7 +265,7 @@ mod tests {
         };
         let raw1 = cmd.to_vec();
         let (boxed_cmd, rest) = from_bytes(&raw1).unwrap();
-        let trait_ptr: *mut RoutingCommand = Box::into_raw(boxed_cmd);
+        let trait_ptr: *mut Any = Box::into_raw(boxed_cmd);
         let cmd_p: Box<Recipient> = unsafe { Box::from_raw(trait_ptr as *mut Recipient) };
         assert_eq!(cmd.id.to_vec(), cmd_p.id.to_vec());
         let raw2 = cmd.to_vec();
@@ -261,7 +284,7 @@ mod tests {
         };
         let raw1 = cmd.to_vec();
         let (boxed_cmd, rest) = from_bytes(&raw1).unwrap();
-        let trait_ptr: *mut RoutingCommand = Box::into_raw(boxed_cmd);
+        let trait_ptr: *mut Any = Box::into_raw(boxed_cmd);
         let cmd_p: Box<SURBReply> = unsafe { Box::from_raw(trait_ptr as *mut SURBReply) };
         assert_eq!(cmd.id.to_vec(), cmd_p.id.to_vec());
         let raw2 = cmd.to_vec();
@@ -273,7 +296,7 @@ mod tests {
         };
         let raw1 = cmd.to_vec();
         let (boxed_cmd, rest) = from_bytes(&raw1).unwrap();
-        let trait_ptr: *mut RoutingCommand = Box::into_raw(boxed_cmd);
+        let trait_ptr: *mut Any = Box::into_raw(boxed_cmd);
         let cmd_p: Box<Delay> = unsafe { Box::from_raw(trait_ptr as *mut Delay) };
         assert_eq!(cmd.delay, cmd_p.delay);
         let raw2 = cmd.to_vec();
