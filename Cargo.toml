@@ -1,7 +1,7 @@
 [package]
 name = "sphinxcrypto"
 version = "0.0.1"
-authors = ["David Stainton <dstainton415@gmail.com>", "Jeffrey Burdges <burdges@gnunet.org>"]
+authors = ["David Stainton <dstainton415@gmail.com>"]
 description = "Sphinx mixnet packet cryptography"
 homepage = "https://github.com/applied-mixnetworks/rust-sphinxcrypto"
 repository = "https://github.com/applied-mixnetworks/rust-sphinxcrypto"

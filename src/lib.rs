@@ -1,4 +1,4 @@
-// Copyright 2016 Jeffrey Burdges and David Stainton
+// Copyright 2018 David Stainton
 
 //! Sphinx mixnet packet crypto
 
