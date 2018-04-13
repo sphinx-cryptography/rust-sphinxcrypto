@@ -81,7 +81,7 @@ pub struct PacketKeys {
 
 /// kdf takes the input key material and returns the Sphinx Packet keys.
 pub fn kdf(input: &[u8; CURVE25519_SIZE]) -> PacketKeys {
-    let mut shake = Keccak::new_shake128();
+    let mut shake = Keccak::new_shake256();
     shake.update(input);
     let mut xof = shake.xof();
     let mut output = [0u8; KDF_OUTPUT_SIZE];
