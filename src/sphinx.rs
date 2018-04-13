@@ -7,7 +7,7 @@ use subtle::ConstantTimeEq;
 use super::commands::{RECIPIENT_SIZE, SURB_REPLY_SIZE, parse_routing_commands};
 use super::constants::{NUMBER_HOPS, PACKET_SIZE, PAYLOAD_SIZE};
 use super::ecdh::{PublicKey, PrivateKey};
-//use super::error::SphinxUnwrapError;
+use super::error::SphinxUnwrapError;
 use super::internal_crypto::{HASH_SIZE, SPRP_IV_SIZE, MAC_SIZE, GROUP_ELEMENT_SIZE, StreamCipher, hash, kdf, hmac, sprp_decrypt};
 
 
@@ -34,19 +34,23 @@ const MAC_OFFSET: usize = ROUTING_INFO_OFFSET + ROUTING_INFO_SIZE;
 ///
 /// # Returns
 ///
-/// * 3-tuple containing (payload, replay_tag, vector of routing commands) || Error string
+/// * 3-tuple containing (payload, replay_tag, vector of routing commands) || SphinxUnwrapError
 ///
-pub fn sphinx_packet_unwrap(private_key: &PrivateKey, packet: &mut [u8; PACKET_SIZE]) -> Result<(Option<Vec<u8>>, [u8; HASH_SIZE], Vec<Box<Any>>), &'static str> {
+pub fn sphinx_packet_unwrap(private_key: &PrivateKey, packet: &mut [u8; PACKET_SIZE]) -> (Option<Vec<u8>>, Option<[u8; HASH_SIZE]>, Option<Vec<Box<Any>>>, Option<SphinxUnwrapError>) {
     // Split into mutable references and validate the AD
     let (authed_header, mac, payload) = mut_array_refs![packet, MAC_OFFSET, MAC_SIZE, PAYLOAD_SIZE];
     let (ad, group_element_bytes, routing_info) = mut_array_refs![authed_header, AD_SIZE, GROUP_ELEMENT_SIZE, ROUTING_INFO_SIZE];
     if ad.ct_eq(&V0_AD).unwrap_u8() == 0 {
-        return Err("sphinx: invalid packet, unknown version");
+        return (None, None, None, Some(SphinxUnwrapError::InvalidPacketError));
     }
 
     // Calculate the hop's shared secret, and replay_tag.
     let mut group_element = PublicKey::default();
-    group_element.from_bytes(group_element_bytes)?;
+    let m = group_element.from_bytes(group_element_bytes);
+    match m {
+        Ok(_) => {},
+        Err(_) => return (None, None, None, Some(SphinxUnwrapError::ImpossibleError)),
+    };
     let shared_secret = private_key.exp(&group_element);
     let replay_tag_raw = hash(&group_element.to_vec());
     let mut replay_tag = [0u8; HASH_SIZE];
@@ -59,7 +63,7 @@ pub fn sphinx_packet_unwrap(private_key: &PrivateKey, packet: &mut [u8; PACKET_S
     let mac_key = keys.header_mac;
     let calculated_mac = hmac(&mac_key, mac);
     if calculated_mac.ct_eq(mac).unwrap_u8() == 0 {
-        return Err("sphinx: invalid packet, MAC mismatch");
+        return (None, Some(replay_tag), None, Some(SphinxUnwrapError::MACError));
     }
 
     // Append padding to preserve length invariance, decrypt the (padded)
@@ -77,7 +81,7 @@ pub fn sphinx_packet_unwrap(private_key: &PrivateKey, packet: &mut [u8; PACKET_S
     let commands = parse_routing_commands(cmd_buf);
     let commands_tuple = match commands {
         Ok(cmds) => cmds,
-        Err(_) => return Ok((None, replay_tag, cmds)),
+        Err(_) => return (None, Some(replay_tag), Some(cmds), Some(SphinxUnwrapError::RouteInfoParseError)),
     };
     let (cmds, maybe_next_hop, maybe_surb_reply) = commands_tuple;
 
@@ -86,11 +90,11 @@ pub fn sphinx_packet_unwrap(private_key: &PrivateKey, packet: &mut [u8; PACKET_S
     let m = sprp_decrypt(&keys.payload_encryption, &sprp_iv, payload.to_vec());
     let decrypted_payload = match m {
         Ok(payload) => payload,
-        Err(_) => return Ok((None, replay_tag, cmds)),
+        Err(_) => return (None, Some(replay_tag), Some(cmds), Some(SphinxUnwrapError::PayloadDecryptError)),
     };
 
     // Transform the packet for forwarding to the next mix, iff the
-    // routing commands vector included a NextNodeHopCommand.
+    // routing commands vector included a Next Hop Command.
     let final_payload;
     if maybe_next_hop.is_some() {
         group_element.blind(&keys.blinding_factor);
@@ -104,7 +108,7 @@ pub fn sphinx_packet_unwrap(private_key: &PrivateKey, packet: &mut [u8; PACKET_S
         if !maybe_surb_reply.is_some() {
             let zeros = [0u8; PAYLOAD_TAG_SIZE];
             if zeros != decrypted_payload[..PAYLOAD_TAG_SIZE] {
-                return Err("payload validation tag mismatch failure");
+                return (None, Some(replay_tag), None, Some(SphinxUnwrapError::PayloadError));
             }
             final_payload = Some(decrypted_payload[PAYLOAD_TAG_SIZE..].to_vec());
         } else {
@@ -112,7 +116,7 @@ pub fn sphinx_packet_unwrap(private_key: &PrivateKey, packet: &mut [u8; PACKET_S
         }
     }
 
-    return Ok((final_payload, replay_tag, cmds));
+    return (final_payload, Some(replay_tag), Some(cmds), None);
 }
 
 #[cfg(test)]
