@@ -6,7 +6,7 @@ extern crate rust_lioness;
 extern crate crypto;
 extern crate tiny_keccak;
 
-use self::rust_lioness::{encrypt, decrypt, RAW_KEY_SIZE, IV_SIZE};
+use self::rust_lioness::{LionessError, encrypt, decrypt, RAW_KEY_SIZE, IV_SIZE};
 use crypto::chacha20::ChaCha20;
 use crypto::symmetriccipher::SynchronousStreamCipher;
 use crypto::blake2b::Blake2b;
@@ -116,16 +116,16 @@ pub fn hmac(key: &[u8; MAC_KEY_SIZE], data: &[u8]) -> [u8; MAC_SIZE] {
 
 /// returns the plaintext of the message msg, decrypted via the
 /// Sphinx SPRP with a given key and IV.
-pub fn sprp_decrypt(key: &[u8; SPRP_KEY_SIZE], iv: &[u8; SPRP_IV_SIZE], msg: Vec<u8>) -> Vec<u8> {
+pub fn sprp_decrypt(key: &[u8; SPRP_KEY_SIZE], iv: &[u8; SPRP_IV_SIZE], msg: Vec<u8>) -> Result<Vec<u8>, LionessError> {
     let mut output: Vec<u8> = Vec::with_capacity(msg.len());
-    decrypt(key, iv, &mut output, &msg);
-    output
+    decrypt(key, iv, &mut output, &msg)?;
+    Ok(output)
 }
 
 /// returns the ciphertext of the message msg, encrypted via the
 /// Sphinx SPRP with a given key and IV.
-pub fn sprp_encrypt(key: &[u8; SPRP_KEY_SIZE], iv: &[u8; SPRP_IV_SIZE], msg: Vec<u8>) -> Vec<u8> {
+pub fn sprp_encrypt(key: &[u8; SPRP_KEY_SIZE], iv: &[u8; SPRP_IV_SIZE], msg: Vec<u8>) -> Result<Vec<u8>, LionessError> {
     let mut output: Vec<u8> = Vec::with_capacity(msg.len());
-    encrypt(key, iv, &mut output, &msg);
-    output
+    encrypt(key, iv, &mut output, &msg)?;
+    Ok(output)
 }

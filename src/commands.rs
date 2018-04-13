@@ -20,7 +20,6 @@ pub const SURB_REPLY_SIZE: usize = 1 + SURB_ID_SIZE;
 const DELAY_SIZE: usize = 1 + 4;
 
 /// Sphinx routing commands.
-const NULL_CMD: u8 = 0x0;
 const NEXT_HOP_CMD: u8 = 0x1;
 const RECIPIENT_CMD: u8 = 0x2;
 const SURB_REPLY_CMD: u8 = 0x3;
@@ -42,8 +41,8 @@ pub fn parse_routing_commands(b: &[u8]) -> Result<(Vec<Box<Any>>, Option<NextHop
     let mut b_copy = Vec::new();
     b_copy.clone_from_slice(b);
 
-    while true {
-        let (boxed_cmd, rest) = from_bytes(&b_copy)?;
+    loop {
+        let (boxed_cmd, _) = from_bytes(&b_copy)?;
 
         // next hop
         let result = boxed_cmd.downcast_ref::<NextHop>();
@@ -220,7 +219,7 @@ mod tests {
     use std::any::Any;
     use self::rand::Rng;
     use self::rand::os::OsRng;
-    use self::rustc_serialize::hex::ToHex;
+    //use self::rustc_serialize::hex::ToHex;
 
     use super::super::constants::{NODE_ID_SIZE, RECIPIENT_ID_SIZE, SURB_ID_SIZE};
     use super::super::internal_crypto::{MAC_SIZE};
@@ -232,19 +231,19 @@ mod tests {
         let mut rnd = OsRng::new().unwrap();
 
         let id = rnd.gen_iter::<u8>().take(NODE_ID_SIZE).collect::<Vec<u8>>();
-        let mut idArr = [0u8; NODE_ID_SIZE];
-        idArr.copy_from_slice(id.as_slice());
+        let mut id_arr = [0u8; NODE_ID_SIZE];
+        id_arr.copy_from_slice(id.as_slice());
 
         let mac = rnd.gen_iter::<u8>().take(MAC_SIZE).collect::<Vec<u8>>();
-        let mut macArr = [0u8; MAC_SIZE];
-        macArr.copy_from_slice(mac.as_slice());
+        let mut mac_arr = [0u8; MAC_SIZE];
+        mac_arr.copy_from_slice(mac.as_slice());
 
         let cmd = NextHop{
-            id: idArr,
-            mac: macArr,
+            id: id_arr,
+            mac: mac_arr,
         };
         let raw1 = cmd.to_vec();
-        let (boxed_cmd, rest) = from_bytes(&raw1).unwrap();
+        let (boxed_cmd, _) = from_bytes(&raw1).unwrap();
         let trait_ptr: *mut Any = Box::into_raw(boxed_cmd);
         let cmd_p: Box<NextHop> = unsafe { Box::from_raw(trait_ptr as *mut NextHop) };
         assert_eq!(cmd.id, cmd_p.id);
@@ -257,14 +256,14 @@ mod tests {
         let mut rnd = OsRng::new().unwrap();
 
         let id = rnd.gen_iter::<u8>().take(RECIPIENT_ID_SIZE).collect::<Vec<u8>>();
-        let mut idArr = [0u8; RECIPIENT_ID_SIZE];
-        idArr.copy_from_slice(id.as_slice());
+        let mut id_arr = [0u8; RECIPIENT_ID_SIZE];
+        id_arr.copy_from_slice(id.as_slice());
 
         let cmd = Recipient{
-            id: idArr,
+            id: id_arr,
         };
         let raw1 = cmd.to_vec();
-        let (boxed_cmd, rest) = from_bytes(&raw1).unwrap();
+        let (boxed_cmd, _) = from_bytes(&raw1).unwrap();
         let trait_ptr: *mut Any = Box::into_raw(boxed_cmd);
         let cmd_p: Box<Recipient> = unsafe { Box::from_raw(trait_ptr as *mut Recipient) };
         assert_eq!(cmd.id.to_vec(), cmd_p.id.to_vec());
@@ -276,14 +275,14 @@ mod tests {
         let mut rnd = OsRng::new().unwrap();
 
         let id = rnd.gen_iter::<u8>().take(SURB_ID_SIZE).collect::<Vec<u8>>();
-        let mut idArr = [0u8; SURB_ID_SIZE];
-        idArr.copy_from_slice(id.as_slice());
+        let mut id_arr = [0u8; SURB_ID_SIZE];
+        id_arr.copy_from_slice(id.as_slice());
 
         let cmd = SURBReply{
-            id: idArr,
+            id: id_arr,
         };
         let raw1 = cmd.to_vec();
-        let (boxed_cmd, rest) = from_bytes(&raw1).unwrap();
+        let (boxed_cmd, _) = from_bytes(&raw1).unwrap();
         let trait_ptr: *mut Any = Box::into_raw(boxed_cmd);
         let cmd_p: Box<SURBReply> = unsafe { Box::from_raw(trait_ptr as *mut SURBReply) };
         assert_eq!(cmd.id.to_vec(), cmd_p.id.to_vec());
@@ -295,7 +294,7 @@ mod tests {
             delay: 3,
         };
         let raw1 = cmd.to_vec();
-        let (boxed_cmd, rest) = from_bytes(&raw1).unwrap();
+        let (boxed_cmd, _) = from_bytes(&raw1).unwrap();
         let trait_ptr: *mut Any = Box::into_raw(boxed_cmd);
         let cmd_p: Box<Delay> = unsafe { Box::from_raw(trait_ptr as *mut Delay) };
         assert_eq!(cmd.delay, cmd_p.delay);

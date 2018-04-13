@@ -8,7 +8,6 @@ extern crate core;
 use self::rand::{Rng};
 use self::rand::os::OsRng;
 use sodiumoxide::crypto::scalarmult::curve25519::{Scalar, GroupElement, scalarmult, scalarmult_base};
-use self::core::ops::RangeFull;
 
 pub const CURVE25519_SIZE: usize = 32;
 
@@ -78,7 +77,6 @@ impl PrivateKey {
         let pub_key = PublicKey{
             _key: exp_g(&raw_arr),
         };
-        let mut priv_key_array = [0u8; CURVE25519_SIZE];
         let key = PrivateKey{
             public_key: pub_key,
             _priv_bytes: raw_arr,

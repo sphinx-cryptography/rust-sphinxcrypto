@@ -17,5 +17,4 @@ pub use ecdh::{PublicKey, PrivateKey, CURVE25519_SIZE};
 mod internal_crypto;
 pub mod commands;
 pub mod error;
-pub mod utils;
 pub mod sphinx;
