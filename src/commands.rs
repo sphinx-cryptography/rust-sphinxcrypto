@@ -4,7 +4,7 @@
 use byteorder::{ByteOrder, BigEndian};
 use std::any::Any;
 
-use super::constants::{NODE_ID_SIZE, RECIPIENT_ID_SIZE, SURB_ID_SIZE};
+use super::constants::{NODE_ID_SIZE, RECIPIENT_ID_SIZE, SURB_ID_SIZE, PER_HOP_ROUTING_INFO_SIZE};
 use super::internal_crypto::{MAC_SIZE};
 
 /// size of the next hop command in bytes
@@ -28,9 +28,46 @@ const SURB_REPLY_CMD: u8 = 0x3;
 const DELAY_CMD: u8 = 0x80;
 
 /// RoutingCommand is a trait representing
-/// Sphinx routing commands
+/// Sphinx routing commands.
 pub trait RoutingCommand {
     fn to_vec(&self) -> Vec<u8>;
+}
+
+/// The commands_to_vec function is used to serialize a vector of
+/// routing commands, however it is considered an error to supply
+/// such a vector of commands with a NextHop command.
+pub fn commands_to_bytes(commands: Vec<Box<Any>>, is_terminal: bool) -> Result<Vec<u8>, &'static str> {
+    let mut output: Vec<u8> = Vec::new();
+    for boxed_cmd in commands.iter() {
+        // XXX fix me: use match_cast crate here
+        let result = boxed_cmd.downcast_ref::<NextHop>();
+        if result.is_some() {
+            return Err("invalid commands, NextHop");
+        }
+        let result = boxed_cmd.downcast_ref::<Recipient>();
+        if result.is_some() {
+            output.extend((*result.expect("value")).clone().to_vec());
+            continue
+        }
+        let result = boxed_cmd.downcast_ref::<SURBReply>();
+        if result.is_some() {
+            output.extend((*result.expect("value")).clone().to_vec());
+            continue
+        }
+        let result = boxed_cmd.downcast_ref::<Delay>();
+        if result.is_some() {
+            output.extend((*result.expect("value")).clone().to_vec());
+        } else {
+            return Err("commands_to_bytes failed to serialize the commands");
+        }
+        if output.len() > PER_HOP_ROUTING_INFO_SIZE {
+            return Err("invalid commands, oversized serialized block");
+        }
+        if !is_terminal && PER_HOP_ROUTING_INFO_SIZE - output.len() < NEXT_HOP_SIZE {
+            return Err("invalid commands, insufficient remaining capabity");
+        }
+    }
+    return Ok(output);
 }
 
 /// Parse the per-hop routing commands.
@@ -133,6 +170,14 @@ pub struct Recipient {
     id: [u8; RECIPIENT_ID_SIZE],
 }
 
+impl Clone for Recipient {
+    fn clone(&self) -> Self {
+        Recipient {
+            id: self.id,
+        }
+    }
+}
+
 impl RoutingCommand for Recipient {
     fn to_vec(&self) -> Vec<u8> {
         let mut out = Vec::new();
@@ -184,6 +229,7 @@ fn surb_reply_from_bytes(b: &[u8]) -> Result<(SURBReply, Vec<u8>), &'static str>
 /// This command is used by for the Poisson mix strategy
 /// where clients compose the Sphinx packet with the
 /// per hop delay of their choosing.
+#[derive(Clone)]
 pub struct Delay {
     delay: u32,
 }

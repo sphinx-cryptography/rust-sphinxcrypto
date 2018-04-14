@@ -4,6 +4,7 @@
 
 #[macro_use]
 extern crate arrayref;
+
 extern crate sodiumoxide;
 extern crate crypto;
 extern crate rustc_serialize;
@@ -17,3 +18,4 @@ mod internal_crypto;
 pub mod commands;
 pub mod error;
 pub mod server;
+pub mod client;
