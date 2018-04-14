@@ -67,8 +67,12 @@ pub struct PrivateKey {
 
 impl PrivateKey {
 
-    pub fn generate() -> Result<PrivateKey,()> {
-        let mut rnd = OsRng::new().unwrap();
+    pub fn generate() -> Result<PrivateKey, &'static str> {
+        let mut rnd = OsRng::new();
+        let mut rnd = match rnd {
+            Ok(r) => r,
+            Err(_) => return Err("failed to retrieve random data"),
+        };
         let raw_key = rnd.gen_iter::<u8>().take(CURVE25519_SIZE).collect::<Vec<u8>>();
         let mut raw_arr = [0u8; CURVE25519_SIZE];
         for (l, r) in raw_arr.iter_mut().zip(raw_key.iter()) {
@@ -82,6 +86,10 @@ impl PrivateKey {
             _priv_bytes: raw_arr,
         };
         Ok(key)
+    }
+
+    pub fn public_key(&self) -> PublicKey {
+        self.public_key
     }
     
     /// Exp calculates the shared secret with the provided public key.
