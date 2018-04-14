@@ -28,6 +28,7 @@ a kind of traffic analysis resistant communications network.
 Sphinx has recently been used in the design of HORNET and
 Lightening Onion. Sphinx has the following features:
 
+* Single Use Reply Blocks
 * bitwise unlinkability for each hop
 * indistinguishable replies
 * hiding the path length
