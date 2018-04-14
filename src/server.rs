@@ -4,20 +4,11 @@
 use std::any::Any;
 use subtle::ConstantTimeEq;
 
-use super::commands::{RECIPIENT_SIZE, SURB_REPLY_SIZE, parse_routing_commands};
-use super::constants::{NUMBER_HOPS, PACKET_SIZE, PAYLOAD_SIZE};
+use super::commands::parse_routing_commands;
+use super::constants::{PACKET_SIZE, PAYLOAD_SIZE, AD_SIZE, ROUTING_INFO_SIZE, V0_AD, PER_HOP_ROUTING_INFO_SIZE, PAYLOAD_TAG_SIZE};
 use super::ecdh::{PublicKey, PrivateKey};
 use super::error::SphinxUnwrapError;
 use super::internal_crypto::{HASH_SIZE, SPRP_IV_SIZE, MAC_SIZE, GROUP_ELEMENT_SIZE, StreamCipher, hash, kdf, hmac, sprp_decrypt};
-
-
-const PER_HOP_ROUTING_INFO_SIZE: usize = RECIPIENT_SIZE + SURB_REPLY_SIZE;
-const ROUTING_INFO_SIZE: usize = PER_HOP_ROUTING_INFO_SIZE * NUMBER_HOPS;
-const AD_SIZE: usize = 2;
-pub const HEADER_SIZE: usize = AD_SIZE + GROUP_ELEMENT_SIZE + ROUTING_INFO_SIZE + MAC_SIZE;
-pub const PAYLOAD_TAG_SIZE: usize = 16;
-
-const V0_AD: [u8; 2] = [0u8; 2];
 
 const GROUP_ELEMENT_OFFSET: usize = AD_SIZE;
 const ROUTING_INFO_OFFSET: usize = GROUP_ELEMENT_OFFSET + GROUP_ELEMENT_SIZE;

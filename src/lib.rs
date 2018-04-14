@@ -13,8 +13,7 @@ extern crate subtle;
 
 pub mod constants;
 pub mod ecdh;
-pub use ecdh::{PublicKey, PrivateKey, CURVE25519_SIZE};
 mod internal_crypto;
 pub mod commands;
 pub mod error;
-pub mod sphinx;
+pub mod server;
