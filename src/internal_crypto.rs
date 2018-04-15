@@ -5,6 +5,7 @@
 extern crate rust_lioness;
 extern crate crypto;
 extern crate tiny_keccak;
+extern crate ecdh_wrapper;
 
 use self::rust_lioness::{LionessError, encrypt, decrypt, RAW_KEY_SIZE, IV_SIZE};
 use crypto::chacha20::ChaCha20;
@@ -14,7 +15,7 @@ use crypto::digest::Digest;
 use self::tiny_keccak::Keccak;
 use std::vec::Vec;
 
-use super::ecdh::CURVE25519_SIZE;
+use self::ecdh_wrapper::KEY_SIZE;
 
 /// the output size of the unkeyed hash in bytes
 pub const HASH_SIZE: usize = 32;
@@ -38,7 +39,7 @@ pub const SPRP_KEY_SIZE: usize = RAW_KEY_SIZE;
 pub const SPRP_IV_SIZE: usize = IV_SIZE;
 
 /// the size of the DH group element in bytes.
-pub const GROUP_ELEMENT_SIZE: usize = CURVE25519_SIZE;
+pub const GROUP_ELEMENT_SIZE: usize = KEY_SIZE;
 
 const KDF_OUTPUT_SIZE: usize = MAC_KEY_SIZE + STREAM_KEY_SIZE + STREAM_IV_SIZE + SPRP_KEY_SIZE + GROUP_ELEMENT_SIZE;
 
@@ -76,11 +77,11 @@ pub struct PacketKeys {
     pub header_encryption: [u8; STREAM_KEY_SIZE],
     pub header_encryption_iv: [u8; STREAM_IV_SIZE],
     pub payload_encryption: [u8; SPRP_KEY_SIZE],
-    pub blinding_factor: [u8; CURVE25519_SIZE],
+    pub blinding_factor: [u8; KEY_SIZE],
 }
 
 /// kdf takes the input key material and returns the Sphinx Packet keys.
-pub fn kdf(input: &[u8; CURVE25519_SIZE]) -> PacketKeys {
+pub fn kdf(input: &[u8; KEY_SIZE]) -> PacketKeys {
     let mut shake = Keccak::new_shake256();
     shake.update(input);
     let mut xof = shake.xof();

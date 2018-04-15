@@ -1,12 +1,14 @@
 // sphinx.rs - sphinx cryptographic packet format
 // Copyright (C) 2018  David Stainton.
 
+extern crate ecdh_wrapper;
+
 use std::any::Any;
 use subtle::ConstantTimeEq;
 
 use super::commands::parse_routing_commands;
 use super::constants::{PACKET_SIZE, PAYLOAD_SIZE, AD_SIZE, ROUTING_INFO_SIZE, V0_AD, PER_HOP_ROUTING_INFO_SIZE, PAYLOAD_TAG_SIZE};
-use super::ecdh::{PublicKey, PrivateKey};
+use self::ecdh_wrapper::{PublicKey, PrivateKey};
 use super::error::SphinxUnwrapError;
 use super::internal_crypto::{HASH_SIZE, SPRP_IV_SIZE, MAC_SIZE, GROUP_ELEMENT_SIZE, StreamCipher, hash, kdf, hmac, sprp_decrypt};
 

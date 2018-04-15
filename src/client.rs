@@ -1,11 +1,13 @@
 // sphinx.rs - sphinx cryptographic packet format
 // Copyright (C) 2018  David Stainton.
 
+extern crate ecdh_wrapper;
+
 use std::any::Any;
 
 use super::constants::{NODE_ID_SIZE, HEADER_SIZE, NUMBER_HOPS};
 use super::internal_crypto::{SPRP_KEY_SIZE, SPRP_IV_SIZE, GROUP_ELEMENT_SIZE, PacketKeys, kdf};
-use super::ecdh::{PublicKey, PrivateKey, exp};
+use self::ecdh_wrapper::{PublicKey, PrivateKey, exp};
 
 /// PathHop describes a route hop that a Sphinx Packet will traverse,
 /// along with all of the per-hop Commands (excluding the Next Hop

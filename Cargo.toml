@@ -17,7 +17,7 @@ byteorder = "1.2.2"
 rustc-serialize = "0.3"
 rand = "^0.4.2"
 rust-lioness = "^0.1.3"
-sodiumoxide = "0.0.16"
+ecdh_wrapper = "0.0.0"
 rust-crypto = "^0.2"
 tiny-keccak = "1.3"
 
