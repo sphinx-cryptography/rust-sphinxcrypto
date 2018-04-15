@@ -8,7 +8,7 @@ use super::constants::{NODE_ID_SIZE, RECIPIENT_ID_SIZE, SURB_ID_SIZE, PER_HOP_RO
 use super::internal_crypto::{MAC_SIZE};
 
 /// size of the next hop command in bytes
-const NEXT_HOP_SIZE: usize = 1 + NODE_ID_SIZE + MAC_SIZE;
+pub const NEXT_HOP_SIZE: usize = 1 + NODE_ID_SIZE + MAC_SIZE;
 
 /// size of the recipient command in bytes
 pub const RECIPIENT_SIZE: usize = 1 + RECIPIENT_ID_SIZE;
@@ -17,7 +17,7 @@ pub const RECIPIENT_SIZE: usize = 1 + RECIPIENT_ID_SIZE;
 pub const SURB_REPLY_SIZE: usize = 1 + SURB_ID_SIZE;
 
 /// size of the delay command in bytes
-const DELAY_SIZE: usize = 1 + 4;
+pub const DELAY_SIZE: usize = 1 + 4;
 
 /// Sphinx routing commands.
 const NEXT_HOP_CMD: u8 = 0x1;
@@ -135,7 +135,7 @@ pub fn from_bytes(b: &[u8]) -> Result<(Box<Any>, Vec<u8>), &'static str> {
 /// the Sphinx packet onto the next hop.
 #[derive(Clone)]
 pub struct NextHop {
-    id: [u8; NODE_ID_SIZE],
+    pub id: [u8; NODE_ID_SIZE],
     pub mac: [u8; MAC_SIZE],
 }
 
@@ -167,7 +167,7 @@ fn next_hop_from_bytes(b: &[u8]) -> Result<(NextHop, Vec<u8>), &'static str> {
 /// The recipient command is used to deliver a payload
 /// to the specified message queue.
 pub struct Recipient {
-    id: [u8; RECIPIENT_ID_SIZE],
+    pub id: [u8; RECIPIENT_ID_SIZE],
 }
 
 impl Clone for Recipient {
@@ -202,7 +202,7 @@ fn recipient_from_bytes(b: &[u8]) -> Result<(Recipient, Vec<u8>), &'static str> 
 /// This command is used by a SURB reply on it's last hop.
 #[derive(Clone)]
 pub struct SURBReply {
-    id: [u8; SURB_ID_SIZE],
+    pub id: [u8; SURB_ID_SIZE],
 }
 
 impl RoutingCommand for SURBReply {
@@ -231,7 +231,7 @@ fn surb_reply_from_bytes(b: &[u8]) -> Result<(SURBReply, Vec<u8>), &'static str>
 /// per hop delay of their choosing.
 #[derive(Clone)]
 pub struct Delay {
-    delay: u32,
+    pub delay: u32,
 }
 
 impl RoutingCommand for Delay {
