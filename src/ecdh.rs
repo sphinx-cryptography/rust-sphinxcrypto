@@ -3,7 +3,6 @@
 
 extern crate rand;
 extern crate sodiumoxide;
-extern crate core;
 
 use self::rand::{Rng};
 use self::rand::os::OsRng;
@@ -15,18 +14,14 @@ pub fn exp(x: &[u8; CURVE25519_SIZE], y: &[u8; CURVE25519_SIZE]) -> [u8; 32] {
     let group_element = GroupElement(*x);
     let g = scalarmult(&Scalar(*y), &group_element).unwrap();
     let mut out = [0u8; CURVE25519_SIZE];
-    for (l, r) in out.iter_mut().zip(g[..].iter()) {
-        *l = *r;
-    }
+    out.copy_from_slice(&g[..]);
     out
 }
 
 pub fn exp_g(x: &[u8; CURVE25519_SIZE]) -> [u8; 32] {
     let g = scalarmult_base(&Scalar(*x));
     let mut out = [0u8; CURVE25519_SIZE];
-    for (l, r) in out.iter_mut().zip(g[..].iter()) {
-        *l = *r;
-    }
+    out.copy_from_slice(&g[..]);
     out
 }
 
@@ -52,9 +47,7 @@ impl PublicKey {
         if b.len() != CURVE25519_SIZE {
             return Err("errInvalidKey")
         }
-        for (l, r) in self._key.iter_mut().zip(b.iter()) {
-            *l = *r;
-        }
+        self._key.copy_from_slice(b);
         Ok(())
     }
 }
@@ -75,9 +68,7 @@ impl PrivateKey {
         };
         let raw_key = rnd.gen_iter::<u8>().take(CURVE25519_SIZE).collect::<Vec<u8>>();
         let mut raw_arr = [0u8; CURVE25519_SIZE];
-        for (l, r) in raw_arr.iter_mut().zip(raw_key.iter()) {
-            *l = *r;
-        }
+        raw_arr.copy_from_slice(&raw_key);
         let pub_key = PublicKey{
             _key: exp_g(&raw_arr),
         };
@@ -109,9 +100,7 @@ impl PrivateKey {
         if b.len() != CURVE25519_SIZE {
             return Err("errInvalidKey")
         }
-        for (l, r) in self._priv_bytes.iter_mut().zip(b.iter()) {
-            *l = *r;
-        }
+        self._priv_bytes.copy_from_slice(&b);
         self.public_key._key = exp_g(&self._priv_bytes);
         Ok(())
     }
