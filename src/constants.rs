@@ -36,6 +36,9 @@ pub const PAYLOAD_TAG_SIZE: usize = 16;
 /// The size of a BlockSphinxPlaintext in bytes.
 pub const SPHINX_PLAINTEXT_HEADER_SIZE: usize = 1 + 1;
 
+/// The size of the user portion of the forward payload.
+pub const USER_FORWARD_PAYLOAD_SIZE: usize = FORWARD_PAYLOAD_SIZE - (SPHINX_PLAINTEXT_HEADER_SIZE + SURB_SIZE);
+
 /// The size of a Single Use Reply Block
 pub const SURB_SIZE: usize = HEADER_SIZE + NODE_ID_SIZE + SPRP_KEY_SIZE;
 
