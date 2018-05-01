@@ -1,13 +1,16 @@
-// sphinx.rs - sphinx cryptographic packet format
+// client.rs - sphinx client
 // Copyright (C) 2018  David Stainton.
 
 extern crate ecdh_wrapper;
 
 use std::any::Any;
 
-use super::constants::{NODE_ID_SIZE, HEADER_SIZE, NUMBER_HOPS};
-use super::internal_crypto::{SPRP_KEY_SIZE, SPRP_IV_SIZE, GROUP_ELEMENT_SIZE, PacketKeys, kdf};
 use self::ecdh_wrapper::{PublicKey, PrivateKey, exp};
+
+use super::utils::xor_assign;
+use super::constants::{NODE_ID_SIZE, HEADER_SIZE, NUMBER_HOPS, ROUTING_INFO_SIZE, PER_HOP_ROUTING_INFO_SIZE};
+use super::internal_crypto::{SPRP_KEY_SIZE, SPRP_IV_SIZE, GROUP_ELEMENT_SIZE, PacketKeys, kdf, StreamCipher};
+
 
 /// PathHop describes a route hop that a Sphinx Packet will traverse,
 /// along with all of the per-hop Commands (excluding the Next Hop
@@ -59,6 +62,36 @@ pub fn create_header(path: Vec<PathHop>) -> Result<([u8; HEADER_SIZE], [SprpKey;
         group_elements[i].from_bytes(&keypair.public_key().to_vec());
         i += 1;
     }
+
+    // Derive the routing_information keystream and encrypted padding
+    // for each hop.
+    let mut ri_keystream: Vec<Vec<u8>> = vec![];
+    let mut ri_padding: Vec<Vec<u8>> = vec![];
+
+    let mut i = 0;
+    while i < NUMBER_HOPS {
+        let mut steam_cipher = StreamCipher::new(&keys[i].header_encryption, &keys[i].header_encryption_iv);
+        let stream = steam_cipher.generate(ROUTING_INFO_SIZE + PER_HOP_ROUTING_INFO_SIZE);
+        let ks_len = stream.len() - (i+1) * PER_HOP_ROUTING_INFO_SIZE;
+        ri_keystream[i] = stream[..ks_len].to_vec();
+        ri_padding[i] = stream[..ks_len].to_vec();
+        if i > 0 {
+            let prev_pad_len = ri_padding[i-1].len();
+            let current = ri_padding[i-1].clone();
+            xor_assign(&mut ri_padding[i][..prev_pad_len], &current);
+        }
+        i += 1;
+    }
+
+    // Create the routing_information block.
+    let skipped_hops = NUMBER_HOPS - num_hops;
+    if skipped_hops > 0 {
+        //routing_info = [];
+    }
+
+    // Assemble the completed Sphinx Packet Header and Sphinx Packet Payload
+    // SPRP key vector.
+
     // XXX incomplete
     return Err("wtf");
 }

@@ -13,6 +13,7 @@ extern crate subtle;
 
 pub mod constants;
 mod internal_crypto;
+mod utils;
 pub mod commands;
 pub mod error;
 pub mod server;
