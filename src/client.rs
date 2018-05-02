@@ -10,6 +10,7 @@ use self::ecdh_wrapper::{PublicKey, PrivateKey, exp};
 use super::utils::xor_assign;
 use super::constants::{NODE_ID_SIZE, HEADER_SIZE, NUMBER_HOPS, ROUTING_INFO_SIZE, PER_HOP_ROUTING_INFO_SIZE};
 use super::internal_crypto::{SPRP_KEY_SIZE, SPRP_IV_SIZE, GROUP_ELEMENT_SIZE, PacketKeys, kdf, StreamCipher};
+use super::commands::{commands_to_vec};
 
 
 /// PathHop describes a route hop that a Sphinx Packet will traverse,
@@ -33,6 +34,8 @@ impl SprpKey {
     }
 }
 
+
+/// create_header creates and returns a new Sphinx header and a set of SPRP keys (one for each hop).
 pub fn create_header(path: Vec<PathHop>) -> Result<([u8; HEADER_SIZE], [SprpKey; NUMBER_HOPS]), &'static str> {
     let num_hops = path.len();
     if num_hops > NUMBER_HOPS {
@@ -88,9 +91,18 @@ pub fn create_header(path: Vec<PathHop>) -> Result<([u8; HEADER_SIZE], [SprpKey;
     if skipped_hops > 0 {
         //routing_info = [];
     }
+    let mut i = num_hops - 1;
+    while i >= 0 {
+        let _is_terminal = i == num_hops;
+        let _cmd_vec = commands_to_vec(path[i].commands.unwrap().as_ref(), _is_terminal);
+
+        // ...
+        i -= 1;
+    }
 
     // Assemble the completed Sphinx Packet Header and Sphinx Packet Payload
     // SPRP key vector.
+
 
     // XXX incomplete
     return Err("wtf");

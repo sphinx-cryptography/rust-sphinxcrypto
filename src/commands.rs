@@ -36,8 +36,11 @@ pub trait RoutingCommand {
 /// The commands_to_vec function is used to serialize a vector of
 /// routing commands, however it is considered an error to supply
 /// such a vector of commands with a NextHop command.
-pub fn commands_to_bytes(commands: Vec<Box<Any>>, is_terminal: bool) -> Result<Vec<u8>, &'static str> {
+pub fn commands_to_vec(commands: &Vec<Box<Any>>, is_terminal: bool) -> Result<Vec<u8>, &'static str> {
     let mut output: Vec<u8> = Vec::new();
+    if commands.len() == 0 {
+        return Ok(output);
+    }
     for boxed_cmd in commands.iter() {
         // XXX fix me: use match_cast crate here
         let result = boxed_cmd.downcast_ref::<NextHop>();
@@ -128,7 +131,6 @@ pub fn from_bytes(b: &[u8]) -> Result<(Box<Any>, Vec<u8>), &'static str> {
             return Err("error failed to decode command(s) from bytes");
         }
     }
-    Err("error failed to decode command(s) from bytes")
 }
 
 /// The next hop command is used to route
