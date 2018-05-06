@@ -45,3 +45,40 @@ impl Error for SphinxUnwrapError {
         }
     }
 }
+
+#[derive(Debug)]
+pub enum SphinxHeaderCreateError {
+    PathTooLongError,
+    SerializeCommandsError,
+    KeyGenFail,
+    ImpossibleError,
+}
+
+impl fmt::Display for SphinxHeaderCreateError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::SphinxHeaderCreateError::*;
+        match *self {
+            PathTooLongError => write!(f, "Path length must not exceed NUMBER_HOPS."),
+            SerializeCommandsError => write!(f, "Failed to serialize commands."),
+            KeyGenFail => write!(f, "Key generation failure."),
+            ImpossibleError => write!(f, "This should never happen."),
+        }
+    }
+}
+
+
+impl Error for SphinxHeaderCreateError {
+    fn description(&self) -> &str {
+        "I'm a Sphinx Header creation error."
+    }
+
+    fn cause(&self) -> Option<&Error> {
+        use self::SphinxHeaderCreateError::*;
+        match *self {
+            PathTooLongError => None,
+            SerializeCommandsError => None,
+            KeyGenFail => None,
+            ImpossibleError => None,
+        }
+    }
+}

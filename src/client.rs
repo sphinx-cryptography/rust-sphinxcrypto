@@ -8,9 +8,10 @@ use std::any::Any;
 use self::ecdh_wrapper::{PublicKey, PrivateKey, exp};
 
 use super::utils::xor_assign;
-use super::constants::{NODE_ID_SIZE, HEADER_SIZE, NUMBER_HOPS, ROUTING_INFO_SIZE, PER_HOP_ROUTING_INFO_SIZE};
-use super::internal_crypto::{SPRP_KEY_SIZE, SPRP_IV_SIZE, GROUP_ELEMENT_SIZE, PacketKeys, kdf, StreamCipher};
-use super::commands::{commands_to_vec};
+use super::constants::{NODE_ID_SIZE, HEADER_SIZE, NUMBER_HOPS, ROUTING_INFO_SIZE, PER_HOP_ROUTING_INFO_SIZE, V0_AD};
+use super::internal_crypto::{SPRP_KEY_SIZE, SPRP_IV_SIZE, GROUP_ELEMENT_SIZE, PacketKeys, kdf, StreamCipher, MAC_SIZE, hmac};
+use super::commands::{RoutingCommand, commands_to_vec, NextHop};
+use super::error::{SphinxHeaderCreateError};
 
 
 /// PathHop describes a route hop that a Sphinx Packet will traverse,
@@ -36,20 +37,27 @@ impl SprpKey {
 
 
 /// create_header creates and returns a new Sphinx header and a set of SPRP keys (one for each hop).
-pub fn create_header(path: Vec<PathHop>) -> Result<([u8; HEADER_SIZE], [SprpKey; NUMBER_HOPS]), &'static str> {
+pub fn create_header(path: Vec<PathHop>) -> Result<([u8; HEADER_SIZE], Vec<SprpKey>), SphinxHeaderCreateError> {
     let num_hops = path.len();
     if num_hops > NUMBER_HOPS {
-        return Err("sphinx: path too long");
+        return Err(SphinxHeaderCreateError::PathTooLongError);
     }
 
     // Derive the key material for each hop.
-    let keypair = PrivateKey::generate()?;
+    let _keypair_result = PrivateKey::generate();
+    if _keypair_result.is_err() {
+        return Err(SphinxHeaderCreateError::KeyGenFail);
+    }
+    let keypair = _keypair_result.unwrap();
     let mut group_elements: Vec<PublicKey> = vec![];
     let mut keys: Vec<PacketKeys> = vec![];
     let mut shared_secret: [u8; GROUP_ELEMENT_SIZE] = keypair.exp(&path[0].public_key);
     keys.push(kdf(&shared_secret));
     let mut group_element = PublicKey::default();
-    group_element.from_bytes(&keypair.public_key().to_vec());
+    let _result = group_element.from_bytes(&keypair.public_key().to_vec());
+    if _result.is_err() {
+        return Err(SphinxHeaderCreateError::ImpossibleError);
+    }
     group_elements.push(group_element);
 
     let mut i = 1;
@@ -62,7 +70,10 @@ pub fn create_header(path: Vec<PathHop>) -> Result<([u8; HEADER_SIZE], [SprpKey;
         }
         keys[i] = kdf(&shared_secret);
         keypair.public_key().blind(&keys[i-1].blinding_factor);
-        group_elements[i].from_bytes(&keypair.public_key().to_vec());
+        let _result = group_elements[i].from_bytes(&keypair.public_key().to_vec());
+        if _result.is_err() {
+            return Err(SphinxHeaderCreateError::ImpossibleError);
+        }
         i += 1;
     }
 
@@ -87,23 +98,76 @@ pub fn create_header(path: Vec<PathHop>) -> Result<([u8; HEADER_SIZE], [SprpKey;
     }
 
     // Create the routing_information block.
+    let mut routing_info = vec![];
+    let mut mac = [0u8; MAC_SIZE];
     let skipped_hops = NUMBER_HOPS - num_hops;
     if skipped_hops > 0 {
-        //routing_info = [];
+        routing_info = vec![0u8; skipped_hops * PER_HOP_ROUTING_INFO_SIZE];
     }
-    let mut i = num_hops - 1;
-    while i >= 0 {
-        let _is_terminal = i == num_hops;
-        let _cmd_vec = commands_to_vec(path[i].commands.unwrap().as_ref(), _is_terminal);
 
-        // ...
+    let mut i: i8 = num_hops as i8 - 1;
+    while i >= 0 {
+        let _is_terminal = i == num_hops as i8 - 1;
+
+        // serialize commands for this hop
+        let _cmd_vec = path[i as usize].commands.as_ref();
+        let _cmd_bytes_result = commands_to_vec(_cmd_vec.as_ref().unwrap(), _is_terminal);
+        if _cmd_bytes_result.is_err() {
+            return Err(SphinxHeaderCreateError::SerializeCommandsError);
+        }
+        let mut _ri_fragment = _cmd_bytes_result.unwrap();
+
+        if !_is_terminal {
+            let _next_id = path[i as usize + 1].id.clone();
+            let _next_mac = mac.clone();
+            let _next_cmd = NextHop{
+                id: _next_id,
+                mac: _next_mac,
+            };
+            _ri_fragment.extend(_next_cmd.to_vec());
+        }
+
+        let _pad_len = PER_HOP_ROUTING_INFO_SIZE - _ri_fragment.len();
+        if _pad_len > 0 {
+            let _zero_bytes = vec![0u8; PER_HOP_ROUTING_INFO_SIZE];
+            _ri_fragment.extend(vec![0u8; _pad_len]);
+        }
+
+        // prepend _ri_fragment to routing_info
+        let mut _tmp = _ri_fragment.to_owned();
+        _tmp.extend(routing_info);
+        routing_info = _tmp;
+
+        xor_assign(&mut routing_info, ri_keystream[i as usize].as_slice());
+        let mut _data = vec![];
+        _data.extend(V0_AD.iter());
+        _data.extend(group_elements[i as usize].to_vec());
+        _data.extend(routing_info.to_owned());
+        if i > 0 {
+            _data.extend(&ri_padding[i as usize - 1]);
+        }
+        mac = hmac(&keys[i as usize].header_mac, &_data);
         i -= 1;
     }
 
     // Assemble the completed Sphinx Packet Header and Sphinx Packet Payload
     // SPRP key vector.
+    let mut _header = vec![];
+    _header.extend(V0_AD.iter());
+    _header.extend(group_elements[0].to_vec());
+    _header.extend(routing_info);
+    _header.extend(mac.iter());
+    let mut header = [0u8; HEADER_SIZE];
+    header.copy_from_slice(&_header);
 
-
-    // XXX incomplete
-    return Err("wtf");
+    let mut sprp_keys = vec![];
+    let i = 0;
+    while i < num_hops {
+        let k = SprpKey{
+            key: keys[i].payload_encryption,
+            iv: keys[i].payload_encryption_iv,
+        };
+        sprp_keys.push(k);
+    }
+    return Ok((header, sprp_keys));
 }

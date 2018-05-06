@@ -41,7 +41,7 @@ pub const SPRP_IV_SIZE: usize = IV_SIZE;
 /// the size of the DH group element in bytes.
 pub const GROUP_ELEMENT_SIZE: usize = KEY_SIZE;
 
-const KDF_OUTPUT_SIZE: usize = MAC_KEY_SIZE + STREAM_KEY_SIZE + STREAM_IV_SIZE + SPRP_KEY_SIZE + GROUP_ELEMENT_SIZE;
+const KDF_OUTPUT_SIZE: usize = MAC_KEY_SIZE + STREAM_KEY_SIZE + STREAM_IV_SIZE + SPRP_KEY_SIZE + SPRP_IV_SIZE + KEY_SIZE;
 
 /// stream cipher for sphinx crypto usage
 #[derive(Clone, Copy)]
@@ -77,6 +77,7 @@ pub struct PacketKeys {
     pub header_encryption: [u8; STREAM_KEY_SIZE],
     pub header_encryption_iv: [u8; STREAM_IV_SIZE],
     pub payload_encryption: [u8; SPRP_KEY_SIZE],
+    pub payload_encryption_iv: [u8; SPRP_IV_SIZE],
     pub blinding_factor: [u8; KEY_SIZE],
 }
 
@@ -87,13 +88,14 @@ pub fn kdf(input: &[u8; KEY_SIZE]) -> PacketKeys {
     let mut xof = shake.xof();
     let mut output = [0u8; KDF_OUTPUT_SIZE];
     xof.squeeze(&mut output);
-    let (a1,a2,a3,a4,a5) = array_refs![&output,MAC_KEY_SIZE,STREAM_KEY_SIZE,STREAM_IV_SIZE,SPRP_KEY_SIZE,GROUP_ELEMENT_SIZE];
+    let (a1,a2,a3,a4,a5,a6) = array_refs![&output,MAC_KEY_SIZE,STREAM_KEY_SIZE,STREAM_IV_SIZE,SPRP_KEY_SIZE,SPRP_IV_SIZE,KEY_SIZE];
     PacketKeys{
         header_mac: *a1,
         header_encryption: *a2,
         header_encryption_iv: *a3,
         payload_encryption: *a4,
-        blinding_factor: *a5,
+        payload_encryption_iv: *a5,
+        blinding_factor: *a6,
     }
 }
 
