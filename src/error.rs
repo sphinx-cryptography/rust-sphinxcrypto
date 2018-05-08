@@ -82,3 +82,37 @@ impl Error for SphinxHeaderCreateError {
         }
     }
 }
+
+#[derive(Debug)]
+pub enum SphinxPacketCreateError {
+    CreateHeaderError,
+    ImpossibleError,
+    SPRPEncryptError,
+}
+
+impl fmt::Display for SphinxPacketCreateError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::SphinxPacketCreateError::*;
+        match *self {
+            CreateHeaderError => write!(f, "Failed to create a header."),
+            ImpossibleError => write!(f, "This should never happen."),
+            SPRPEncryptError => write!(f, "SPRP Encryption failure."),
+        }
+    }
+}
+
+
+impl Error for SphinxPacketCreateError {
+    fn description(&self) -> &str {
+        "I'm a Sphinx Packet creation error."
+    }
+
+    fn cause(&self) -> Option<&Error> {
+        use self::SphinxPacketCreateError::*;
+        match *self {
+            CreateHeaderError => None,
+            ImpossibleError => None,
+            SPRPEncryptError => None,
+        }
+    }
+}

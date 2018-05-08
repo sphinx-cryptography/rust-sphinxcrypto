@@ -8,10 +8,10 @@ use std::any::Any;
 use self::ecdh_wrapper::{PublicKey, PrivateKey, exp};
 
 use super::utils::xor_assign;
-use super::constants::{NODE_ID_SIZE, HEADER_SIZE, NUMBER_HOPS, ROUTING_INFO_SIZE, PER_HOP_ROUTING_INFO_SIZE, V0_AD};
-use super::internal_crypto::{SPRP_KEY_SIZE, SPRP_IV_SIZE, GROUP_ELEMENT_SIZE, PacketKeys, kdf, StreamCipher, MAC_SIZE, hmac};
+use super::constants::{NODE_ID_SIZE, HEADER_SIZE, NUMBER_HOPS, ROUTING_INFO_SIZE, PER_HOP_ROUTING_INFO_SIZE, V0_AD, FORWARD_PAYLOAD_SIZE, PACKET_SIZE, PAYLOAD_TAG_SIZE};
+use super::internal_crypto::{SPRP_KEY_SIZE, SPRP_IV_SIZE, GROUP_ELEMENT_SIZE, PacketKeys, kdf, StreamCipher, MAC_SIZE, hmac, sprp_encrypt};
 use super::commands::{RoutingCommand, commands_to_vec, NextHop};
-use super::error::{SphinxHeaderCreateError};
+use super::error::{SphinxHeaderCreateError, SphinxPacketCreateError};
 
 
 /// PathHop describes a route hop that a Sphinx Packet will traverse,
@@ -29,7 +29,7 @@ pub struct SprpKey {
 }
 
 impl SprpKey {
-    fn reset(&mut self) {
+    pub fn reset(&mut self) {
         self.key = [0u8; SPRP_KEY_SIZE];
         self.iv = [0u8; SPRP_IV_SIZE];
     }
@@ -170,4 +170,31 @@ pub fn create_header(path: Vec<PathHop>) -> Result<([u8; HEADER_SIZE], Vec<SprpK
         sprp_keys.push(k);
     }
     return Ok((header, sprp_keys));
+}
+
+pub fn new_packet(path: Vec<PathHop>, payload: [u8; FORWARD_PAYLOAD_SIZE]) -> Result<[u8; PACKET_SIZE], SphinxPacketCreateError>{
+    let _path_len = path.len();
+    let _header_result = create_header(path);
+    if _header_result.is_err() {
+        return Err(SphinxPacketCreateError::CreateHeaderError);
+    }
+    let _tmp = _header_result.unwrap();
+    let header = _tmp.0;
+    let sprp_keys = _tmp.1;
+
+    let mut i = _path_len as i8;
+    let mut _payload = payload.to_vec();
+    while i >= 0 {
+        let _result = sprp_encrypt(&sprp_keys[i as usize].key, &sprp_keys[i as usize].iv, payload.to_vec());
+        if _result.is_err() {
+            return Err(SphinxPacketCreateError::SPRPEncryptError);
+        }
+        _payload = _result.unwrap();
+        i -= 1;
+    }
+
+    let mut packet = [0u8; PACKET_SIZE];
+    packet[0..HEADER_SIZE].copy_from_slice(&header);
+    packet[HEADER_SIZE+PAYLOAD_TAG_SIZE..].copy_from_slice(&_payload);
+    return Ok(packet);
 }
