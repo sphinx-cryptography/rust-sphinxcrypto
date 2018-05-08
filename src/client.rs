@@ -36,7 +36,7 @@ impl SprpKey {
 }
 
 
-/// create_header creates and returns a new Sphinx header and a set of SPRP keys (one for each hop).
+/// create_header creates and returns a new Sphinx header and a vector of SPRP keys.
 pub fn create_header(path: Vec<PathHop>) -> Result<([u8; HEADER_SIZE], Vec<SprpKey>), SphinxHeaderCreateError> {
     let num_hops = path.len();
     if num_hops > NUMBER_HOPS {
@@ -172,6 +172,17 @@ pub fn create_header(path: Vec<PathHop>) -> Result<([u8; HEADER_SIZE], Vec<SprpK
     return Ok((header, sprp_keys));
 }
 
+/// create a new sphinx packet
+///
+/// # Arguments
+///
+/// * `path` - a vector of path hops.
+/// * `payload` - a payload to be encapsulated.
+///
+/// # Returns
+///
+/// * Returns a packet or an error.
+///
 pub fn new_packet(path: Vec<PathHop>, payload: [u8; FORWARD_PAYLOAD_SIZE]) -> Result<[u8; PACKET_SIZE], SphinxPacketCreateError>{
     let _path_len = path.len();
     let _header_result = create_header(path);
