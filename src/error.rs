@@ -147,14 +147,14 @@ impl Error for SphinxSurbCreateError {
 
 #[derive(Debug)]
 pub enum SphinxPacketFromSurbError {
-    InvalidSurbError,
+    ImpossibleError,
 }
 
 impl fmt::Display for SphinxPacketFromSurbError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::SphinxPacketFromSurbError::*;
         match *self {
-            InvalidSurbError => write!(f, "Error, SURB truncated."),
+            ImpossibleError => write!(f, "This should never happen."),
         }
     }
 }
@@ -168,7 +168,44 @@ impl Error for SphinxPacketFromSurbError {
     fn cause(&self) -> Option<&Error> {
         use self::SphinxPacketFromSurbError::*;
         match *self {
-            InvalidSurbError => None,
+            ImpossibleError => None,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum SphinxDecryptSurbError {
+    InvalidSurbKeys,
+    TruncatedPayloadError,
+    DecryptError,
+    InvalidTag,
+}
+
+impl fmt::Display for SphinxDecryptSurbError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::SphinxDecryptSurbError::*;
+        match *self {
+            InvalidSurbKeys => write!(f, "invalid surb keys"),
+            TruncatedPayloadError => write!(f, "invalid payload"),
+            DecryptError => write!(f, "decryption failure"),
+            InvalidTag  => write!(f, "invalid tag"),
+        }
+    }
+}
+
+
+impl Error for SphinxDecryptSurbError {
+    fn description(&self) -> &str {
+        "I'm a Sphinx packet from SURB decryption error."
+    }
+
+    fn cause(&self) -> Option<&Error> {
+        use self::SphinxDecryptSurbError::*;
+        match *self {
+            InvalidSurbKeys => None,
+            TruncatedPayloadError => None,
+            DecryptError => None,
+            InvalidTag => None,
         }
     }
 }

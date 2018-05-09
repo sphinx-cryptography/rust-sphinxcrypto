@@ -5,16 +5,19 @@ extern crate rustc_serialize;
 extern crate rand;
 
 use std::any::Any;
+use subtle::ConstantTimeEq;
 use self::rand::Rng;
 
 use super::ecdh::{PublicKey, PrivateKey, exp};
 
 use super::utils::xor_assign;
 use super::constants::{NODE_ID_SIZE, HEADER_SIZE, NUMBER_HOPS, ROUTING_INFO_SIZE, PER_HOP_ROUTING_INFO_SIZE,
-                       V0_AD, FORWARD_PAYLOAD_SIZE, PACKET_SIZE, PAYLOAD_TAG_SIZE, SURB_SIZE};
-use super::internal_crypto::{SPRP_KEY_SIZE, SPRP_IV_SIZE, GROUP_ELEMENT_SIZE, PacketKeys, kdf, StreamCipher, MAC_SIZE, hmac, sprp_encrypt};
+                       V0_AD, FORWARD_PAYLOAD_SIZE, PACKET_SIZE, PAYLOAD_TAG_SIZE, SURB_SIZE, PAYLOAD_SIZE};
+use super::internal_crypto::{SPRP_KEY_SIZE, SPRP_IV_SIZE, GROUP_ELEMENT_SIZE, PacketKeys, kdf,
+                             StreamCipher, MAC_SIZE, hmac, sprp_encrypt, sprp_decrypt};
 use super::commands::{RoutingCommand, commands_to_vec, NextHop};
-use super::error::{SphinxHeaderCreateError, SphinxPacketCreateError, SphinxSurbCreateError, SphinxPacketFromSurbError};
+use super::error::{SphinxHeaderCreateError, SphinxPacketCreateError, SphinxSurbCreateError,
+                   SphinxPacketFromSurbError, SphinxDecryptSurbError};
 
 use self::rustc_serialize::hex::ToHex;
 
@@ -265,7 +268,53 @@ pub fn new_packet_from_surb(surb: [u8; SURB_SIZE], payload: [u8; FORWARD_PAYLOAD
     packet[HEADER_SIZE + PAYLOAD_TAG_SIZE..].copy_from_slice(&payload);
 
     // Encrypt the payload.
-    sprp_encrypt(key, iv, packet.to_vec());
-
+    let _result = sprp_encrypt(key, iv, packet.to_vec());
+    if _result.is_err() {
+        return Err(SphinxPacketFromSurbError::ImpossibleError);
+    }
     return Ok((packet, *id));
+}
+
+pub fn decrypt_surb_payload(payload: [u8; PAYLOAD_SIZE], keys: Vec<u8>) -> Result<Vec<u8>, SphinxDecryptSurbError> {
+    let num_hops = keys.len() / SPRP_KEY_MATERIAL_SIZE;
+    if keys.len() % SPRP_KEY_MATERIAL_SIZE != 0 || num_hops < 1 {
+        return Err(SphinxDecryptSurbError::InvalidSurbKeys);
+    }
+    if payload.len() < PAYLOAD_TAG_SIZE {
+        return Err(SphinxDecryptSurbError::TruncatedPayloadError);
+    }
+
+    let mut sprp_key = [0u8; SPRP_KEY_SIZE];
+    let mut sprp_iv = [0u8; SPRP_IV_SIZE];
+    let mut k = &keys[0..];
+    let mut b = payload.to_vec();
+    let mut i = 0;
+    while i < num_hops {
+        sprp_key.copy_from_slice(&k[..SPRP_KEY_SIZE]);
+        sprp_iv.copy_from_slice(&k[SPRP_IV_SIZE..]);
+        k = &k[SPRP_KEY_MATERIAL_SIZE..];
+        if i == num_hops - 1 {
+            let _result = sprp_decrypt(&sprp_key, &sprp_iv, b.to_vec());
+            if _result.is_err() {
+                return Err(SphinxDecryptSurbError::DecryptError);
+            }
+            b = _result.unwrap();
+        } else {
+	    // Undo one *decrypt* operation done by the Unwrap.
+            let _result = sprp_encrypt(&sprp_key, &sprp_iv, b.to_vec());
+            if _result.is_err() {
+                return Err(SphinxDecryptSurbError::DecryptError);
+            }
+            b = _result.unwrap();
+        }
+        i += 1;
+    }
+
+    // Authenticate the payload.
+    let tag = [0u8; PAYLOAD_TAG_SIZE];
+    if b[..PAYLOAD_TAG_SIZE].ct_eq(&tag).unwrap_u8() == 0 {
+        return Err(SphinxDecryptSurbError::InvalidTag)
+    }
+
+    return Ok(b[PAYLOAD_TAG_SIZE..].to_vec());
 }
