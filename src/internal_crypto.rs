@@ -5,7 +5,6 @@
 extern crate rust_lioness;
 extern crate crypto;
 extern crate tiny_keccak;
-extern crate ecdh_wrapper;
 
 use self::rust_lioness::{LionessError, encrypt, decrypt, RAW_KEY_SIZE, IV_SIZE};
 use crypto::chacha20::ChaCha20;
@@ -15,7 +14,7 @@ use crypto::digest::Digest;
 use self::tiny_keccak::Keccak;
 use std::vec::Vec;
 
-use self::ecdh_wrapper::KEY_SIZE;
+use super::ecdh::KEY_SIZE;
 
 /// the output size of the unkeyed hash in bytes
 pub const HASH_SIZE: usize = 32;

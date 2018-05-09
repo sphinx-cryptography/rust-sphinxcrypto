@@ -1,14 +1,12 @@
 // sphinx.rs - sphinx cryptographic packet format
 // Copyright (C) 2018  David Stainton.
 
-extern crate ecdh_wrapper;
-
 use std::any::Any;
 use subtle::ConstantTimeEq;
 
 use super::commands::parse_routing_commands;
 use super::constants::{PACKET_SIZE, PAYLOAD_SIZE, AD_SIZE, ROUTING_INFO_SIZE, V0_AD, PER_HOP_ROUTING_INFO_SIZE, PAYLOAD_TAG_SIZE};
-use self::ecdh_wrapper::{PublicKey, PrivateKey};
+use super::ecdh::{PublicKey, PrivateKey};
 use super::error::SphinxUnwrapError;
 use super::internal_crypto::{HASH_SIZE, SPRP_IV_SIZE, MAC_SIZE, GROUP_ELEMENT_SIZE, StreamCipher, hash, kdf, hmac, sprp_decrypt};
 
@@ -116,9 +114,8 @@ pub fn sphinx_packet_unwrap(private_key: &PrivateKey, packet: &mut [u8; PACKET_S
 mod tests {
     extern crate rand;
     extern crate rustc_serialize;
-    extern crate ecdh_wrapper;
 
-    use self::ecdh_wrapper::{PublicKey, PrivateKey};
+    use super::super::ecdh::{PublicKey, PrivateKey};
 
     use self::rand::Rng;
     use self::rand::os::OsRng;
@@ -127,8 +124,13 @@ mod tests {
     use super::super::client::{new_packet, PathHop};
     use super::super::constants::{NUMBER_HOPS, NODE_ID_SIZE, FORWARD_PAYLOAD_SIZE};
 
+    fn os_rng() -> OsRng {
+        OsRng::new().expect("failure to create an OS RNG")
+    }
+
     #[test]
     fn sphinx_packet_unwrap_test() {
+        let mut r = os_rng();
         let mut mix_keys = vec![];
         let mut path = vec![];
         let mut i = 0;
@@ -164,7 +166,7 @@ privacy, but electronic technologies do.");
         let mut start_payload = [0u8; FORWARD_PAYLOAD_SIZE];
         start_payload.copy_from_slice(&payload);
 
-        let _packet_result = new_packet(path, payload);
+        let _packet_result = new_packet(&mut r, path, payload);
         assert_eq!(_packet_result.is_ok(), true);
         let mut packet = _packet_result.unwrap();
 

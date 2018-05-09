@@ -1,14 +1,13 @@
 // client.rs - sphinx client
 // Copyright (C) 2018  David Stainton.
 
-extern crate ecdh_wrapper;
 extern crate rustc_serialize;
 extern crate rand;
 
 use std::any::Any;
 use self::rand::Rng;
 
-use self::ecdh_wrapper::{PublicKey, PrivateKey, exp};
+use super::ecdh::{PublicKey, PrivateKey, exp};
 
 use super::utils::xor_assign;
 use super::constants::{NODE_ID_SIZE, HEADER_SIZE, NUMBER_HOPS, ROUTING_INFO_SIZE, PER_HOP_ROUTING_INFO_SIZE, V0_AD, FORWARD_PAYLOAD_SIZE, PACKET_SIZE, PAYLOAD_TAG_SIZE, SURB_SIZE};
@@ -44,7 +43,7 @@ impl SprpKey {
 }
 
 /// create_header creates and returns a new Sphinx header and a vector of SPRP keys.
-pub fn create_header(path: Vec<PathHop>) -> Result<([u8; HEADER_SIZE], Vec<SprpKey>), SphinxHeaderCreateError> {
+pub fn create_header<R: Rng>(rng: &mut R, path: Vec<PathHop>) -> Result<([u8; HEADER_SIZE], Vec<SprpKey>), SphinxHeaderCreateError> {
     let num_hops = path.len();
     if num_hops > NUMBER_HOPS {
         return Err(SphinxHeaderCreateError::PathTooLongError);
@@ -187,9 +186,9 @@ pub fn create_header(path: Vec<PathHop>) -> Result<([u8; HEADER_SIZE], Vec<SprpK
 ///
 /// * Returns a packet or an error.
 ///
-pub fn new_packet(path: Vec<PathHop>, payload: [u8; FORWARD_PAYLOAD_SIZE]) -> Result<[u8; PACKET_SIZE], SphinxPacketCreateError>{
+pub fn new_packet<R: Rng>(rng: &mut R, path: Vec<PathHop>, payload: [u8; FORWARD_PAYLOAD_SIZE]) -> Result<[u8; PACKET_SIZE], SphinxPacketCreateError>{
     let _path_len = path.len();
-    let _header_result = create_header(path);
+    let _header_result = create_header(rng, path);
     if _header_result.is_err() {
         return Err(SphinxPacketCreateError::CreateHeaderError);
     }
@@ -223,7 +222,7 @@ pub fn new_surb<R: Rng>(rng: &mut R, path: Vec<PathHop>) -> Result<([u8; SURB_SI
     rng.fill_bytes(&mut key_payload);
     let mut _id = [0u8; NODE_ID_SIZE];
     _id.copy_from_slice(&path[0].id[..]);
-    let _header_result = create_header(path);
+    let _header_result = create_header(rng, path);
     if _header_result.is_err() {
         return Err(SphinxSurbCreateError::CreateHeaderError);
     }
