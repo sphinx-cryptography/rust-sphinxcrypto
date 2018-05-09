@@ -1,7 +1,7 @@
 // constants.rs - sphinx cryptographic packet format constants
 // Copyright (C) 2018  David Stainton.
 
-use super::internal_crypto::{GROUP_ELEMENT_SIZE, MAC_SIZE, SPRP_KEY_SIZE};
+use super::internal_crypto::{GROUP_ELEMENT_SIZE, MAC_SIZE, SPRP_KEY_SIZE, SPRP_IV_SIZE};
 use super::commands::{RECIPIENT_SIZE, SURB_REPLY_SIZE};
 
 
@@ -40,7 +40,7 @@ pub const SPHINX_PLAINTEXT_HEADER_SIZE: usize = 1 + 1;
 pub const USER_FORWARD_PAYLOAD_SIZE: usize = FORWARD_PAYLOAD_SIZE - (SPHINX_PLAINTEXT_HEADER_SIZE + SURB_SIZE);
 
 /// The size of a Single Use Reply Block
-pub const SURB_SIZE: usize = HEADER_SIZE + NODE_ID_SIZE + SPRP_KEY_SIZE;
+pub const SURB_SIZE: usize = HEADER_SIZE + NODE_ID_SIZE + SPRP_KEY_SIZE + SPRP_IV_SIZE;
 
 /// The size of a Sphinx packet in bytes.
 pub const PACKET_SIZE: usize = HEADER_SIZE + PAYLOAD_TAG_SIZE + FORWARD_PAYLOAD_SIZE;

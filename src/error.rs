@@ -144,3 +144,31 @@ impl Error for SphinxSurbCreateError {
         }
     }
 }
+
+#[derive(Debug)]
+pub enum SphinxPacketFromSurbError {
+    InvalidSurbError,
+}
+
+impl fmt::Display for SphinxPacketFromSurbError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::SphinxPacketFromSurbError::*;
+        match *self {
+            InvalidSurbError => write!(f, "Error, SURB truncated."),
+        }
+    }
+}
+
+
+impl Error for SphinxPacketFromSurbError {
+    fn description(&self) -> &str {
+        "I'm a Sphinx packet from SURB creation error."
+    }
+
+    fn cause(&self) -> Option<&Error> {
+        use self::SphinxPacketFromSurbError::*;
+        match *self {
+            InvalidSurbError => None,
+        }
+    }
+}

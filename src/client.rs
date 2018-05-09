@@ -10,10 +10,11 @@ use self::rand::Rng;
 use super::ecdh::{PublicKey, PrivateKey, exp};
 
 use super::utils::xor_assign;
-use super::constants::{NODE_ID_SIZE, HEADER_SIZE, NUMBER_HOPS, ROUTING_INFO_SIZE, PER_HOP_ROUTING_INFO_SIZE, V0_AD, FORWARD_PAYLOAD_SIZE, PACKET_SIZE, PAYLOAD_TAG_SIZE, SURB_SIZE};
+use super::constants::{NODE_ID_SIZE, HEADER_SIZE, NUMBER_HOPS, ROUTING_INFO_SIZE, PER_HOP_ROUTING_INFO_SIZE,
+                       V0_AD, FORWARD_PAYLOAD_SIZE, PACKET_SIZE, PAYLOAD_TAG_SIZE, SURB_SIZE};
 use super::internal_crypto::{SPRP_KEY_SIZE, SPRP_IV_SIZE, GROUP_ELEMENT_SIZE, PacketKeys, kdf, StreamCipher, MAC_SIZE, hmac, sprp_encrypt};
 use super::commands::{RoutingCommand, commands_to_vec, NextHop};
-use super::error::{SphinxHeaderCreateError, SphinxPacketCreateError, SphinxSurbCreateError};
+use super::error::{SphinxHeaderCreateError, SphinxPacketCreateError, SphinxSurbCreateError, SphinxPacketFromSurbError};
 
 use self::rustc_serialize::hex::ToHex;
 
@@ -252,4 +253,19 @@ pub fn new_surb<R: Rng>(rng: &mut R, path: Vec<PathHop>) -> Result<([u8; SURB_SI
     surb.copy_from_slice(_surb.as_slice());
 
     return Ok((surb, k));
+}
+
+pub fn new_packet_from_surb(surb: [u8; SURB_SIZE], payload: [u8; FORWARD_PAYLOAD_SIZE]) -> Result<([u8; PACKET_SIZE], [u8; NODE_ID_SIZE]), SphinxPacketFromSurbError>{
+    // Deserialize the SURB.
+    let (header, id, key, iv) = array_refs![&surb, HEADER_SIZE, NODE_ID_SIZE, SPRP_KEY_SIZE, SPRP_IV_SIZE];
+
+    // Assemble the packet.
+    let mut packet = [0u8; PACKET_SIZE];
+    packet[..HEADER_SIZE].copy_from_slice(header);
+    packet[HEADER_SIZE + PAYLOAD_TAG_SIZE..].copy_from_slice(&payload);
+
+    // Encrypt the payload.
+    sprp_encrypt(key, iv, packet.to_vec());
+
+    return Ok((packet, *id));
 }
