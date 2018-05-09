@@ -116,3 +116,31 @@ impl Error for SphinxPacketCreateError {
         }
     }
 }
+
+#[derive(Debug)]
+pub enum SphinxSurbCreateError {
+    CreateHeaderError,
+}
+
+impl fmt::Display for SphinxSurbCreateError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::SphinxSurbCreateError::*;
+        match *self {
+            CreateHeaderError => write!(f, "Failed to create a header."),
+        }
+    }
+}
+
+
+impl Error for SphinxSurbCreateError {
+    fn description(&self) -> &str {
+        "I'm a Sphinx Surb creation error."
+    }
+
+    fn cause(&self) -> Option<&Error> {
+        use self::SphinxSurbCreateError::*;
+        match *self {
+            CreateHeaderError => None,
+        }
+    }
+}

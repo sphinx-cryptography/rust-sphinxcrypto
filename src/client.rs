@@ -3,18 +3,22 @@
 
 extern crate ecdh_wrapper;
 extern crate rustc_serialize;
+extern crate rand;
 
 use std::any::Any;
+use self::rand::Rng;
 
 use self::ecdh_wrapper::{PublicKey, PrivateKey, exp};
 
 use super::utils::xor_assign;
-use super::constants::{NODE_ID_SIZE, HEADER_SIZE, NUMBER_HOPS, ROUTING_INFO_SIZE, PER_HOP_ROUTING_INFO_SIZE, V0_AD, FORWARD_PAYLOAD_SIZE, PACKET_SIZE, PAYLOAD_TAG_SIZE};
+use super::constants::{NODE_ID_SIZE, HEADER_SIZE, NUMBER_HOPS, ROUTING_INFO_SIZE, PER_HOP_ROUTING_INFO_SIZE, V0_AD, FORWARD_PAYLOAD_SIZE, PACKET_SIZE, PAYLOAD_TAG_SIZE, SURB_SIZE};
 use super::internal_crypto::{SPRP_KEY_SIZE, SPRP_IV_SIZE, GROUP_ELEMENT_SIZE, PacketKeys, kdf, StreamCipher, MAC_SIZE, hmac, sprp_encrypt};
 use super::commands::{RoutingCommand, commands_to_vec, NextHop};
-use super::error::{SphinxHeaderCreateError, SphinxPacketCreateError};
+use super::error::{SphinxHeaderCreateError, SphinxPacketCreateError, SphinxSurbCreateError};
 
 use self::rustc_serialize::hex::ToHex;
+
+const SPRP_KEY_MATERIAL_SIZE: usize = SPRP_KEY_SIZE + SPRP_IV_SIZE;
 
 
 /// PathHop describes a route hop that a Sphinx Packet will traverse,
@@ -26,6 +30,7 @@ pub struct PathHop {
     pub commands: Option<Vec<Box<Any>>>,
 }
 
+/// SprpKey is a struct that contains a SPRP key and SPRP IV.
 pub struct SprpKey {
     pub key: [u8; SPRP_KEY_SIZE],
     pub iv: [u8; SPRP_IV_SIZE],
@@ -37,7 +42,6 @@ impl SprpKey {
         self.iv = [0u8; SPRP_IV_SIZE];
     }
 }
-
 
 /// create_header creates and returns a new Sphinx header and a vector of SPRP keys.
 pub fn create_header(path: Vec<PathHop>) -> Result<([u8; HEADER_SIZE], Vec<SprpKey>), SphinxHeaderCreateError> {
@@ -208,4 +212,45 @@ pub fn new_packet(path: Vec<PathHop>, payload: [u8; FORWARD_PAYLOAD_SIZE]) -> Re
     packet[0..HEADER_SIZE].copy_from_slice(&header);
     packet[HEADER_SIZE+PAYLOAD_TAG_SIZE..].copy_from_slice(&_payload);
     return Ok(packet);
+}
+
+/// new_surb returns a new SURB given a path.
+pub fn new_surb<R: Rng>(rng: &mut R, path: Vec<PathHop>) -> Result<([u8; SURB_SIZE], Vec<u8>), SphinxSurbCreateError> {
+    // Create a random SPRP key + iv for the recipient to use to encrypt
+    // the payload when using the SURB.
+    let _path_len = path.len();
+    let mut key_payload = [0u8; SPRP_KEY_MATERIAL_SIZE];
+    rng.fill_bytes(&mut key_payload);
+    let mut _id = [0u8; NODE_ID_SIZE];
+    _id.copy_from_slice(&path[0].id[..]);
+    let _header_result = create_header(path);
+    if _header_result.is_err() {
+        return Err(SphinxSurbCreateError::CreateHeaderError);
+    }
+    let _tmp = _header_result.unwrap();
+    let header = _tmp.0;
+    let mut sprp_keys = _tmp.1;
+
+    // Serialize the SPRP keys into an opaque blob, in reverse order to ease
+    // decryption.
+    let mut k: Vec<u8> = Vec::new();
+    let mut i = (_path_len - 1) as i8;
+    while i >= 0 {
+        k.extend(sprp_keys[i as usize].key.iter());
+        k.extend(sprp_keys[i as usize].iv.iter());
+        sprp_keys[i as usize].reset();
+        i -= 1;
+    }
+    k.extend(key_payload.iter());
+
+    // Serialize the SURB into an opaque blob.
+    let mut _surb: Vec<u8> = vec![];
+    _surb.extend(header.iter());
+    _surb.extend(_id.iter());
+    _surb.extend(key_payload[..].iter());
+
+    let mut surb = [0u8; SURB_SIZE];
+    surb.copy_from_slice(_surb.as_slice());
+
+    return Ok((surb, k));
 }
