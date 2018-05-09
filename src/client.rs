@@ -1,7 +1,6 @@
 // client.rs - sphinx client
 // Copyright (C) 2018  David Stainton.
 
-extern crate rustc_serialize;
 extern crate rand;
 
 use std::any::Any;
@@ -71,11 +70,7 @@ pub fn create_header<R: Rng>(rng: &mut R, path: Vec<PathHop>) -> Result<([u8; HE
     let mut keys: Vec<PacketKeys> = vec![];
     let mut shared_secret: [u8; GROUP_ELEMENT_SIZE] = keypair.exp(&path[0].public_key);
     keys.push(kdf(&shared_secret));
-    let mut group_element = PublicKey::default();
-    let _result = group_element.from_bytes(&keypair.public_key().to_vec());
-    if _result.is_err() {
-        return Err(SphinxHeaderCreateError::ImpossibleError);
-    }
+    let mut group_element = keypair.public_key();
     group_elements.push(group_element);
 
     let mut i = 1;
@@ -87,8 +82,8 @@ pub fn create_header<R: Rng>(rng: &mut R, path: Vec<PathHop>) -> Result<([u8; HE
             j += 1;
         }
         keys.push(kdf(&shared_secret));
-        keypair.public_key().blind(&keys[i-1].blinding_factor);
-        group_elements.push(keypair.public_key());
+        group_element.blind(&keys[i-1].blinding_factor);
+        group_elements.push(group_element);
         i += 1;
     }
 
@@ -143,7 +138,6 @@ pub fn create_header<R: Rng>(rng: &mut R, path: Vec<PathHop>) -> Result<([u8; HE
 
         let _pad_len = PER_HOP_ROUTING_INFO_SIZE - _ri_fragment.len();
         if _pad_len > 0 {
-            let _zero_bytes = vec![0u8; PER_HOP_ROUTING_INFO_SIZE];
             _ri_fragment.extend(vec![0u8; _pad_len]);
         }
 
@@ -210,6 +204,12 @@ pub fn new_packet<R: Rng>(rng: &mut R, path: Vec<PathHop>, payload: [u8; FORWARD
 
     let mut i = _path_len as i8 - 1;
     let mut _payload = payload.to_vec();
+
+    // prepend payload tag of zero bytes
+    let mut _payload = vec![0u8; PAYLOAD_TAG_SIZE];
+    _payload.extend(payload.iter());
+
+    // encrypt tagged payload with SPRP
     while i >= 0 {
         let _result = sprp_encrypt(&sprp_keys[i as usize].key, &sprp_keys[i as usize].iv, _payload.clone());
         if _result.is_err() {
@@ -219,9 +219,10 @@ pub fn new_packet<R: Rng>(rng: &mut R, path: Vec<PathHop>, payload: [u8; FORWARD
         i -= 1;
     }
 
+    // attached Sphinx head to Sphinx body
     let mut packet = [0u8; PACKET_SIZE];
     packet[0..HEADER_SIZE].copy_from_slice(&header);
-    packet[HEADER_SIZE+PAYLOAD_TAG_SIZE..].copy_from_slice(&_payload);
+    packet[HEADER_SIZE..].copy_from_slice(&_payload);
     return Ok(packet);
 }
 

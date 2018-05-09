@@ -25,7 +25,6 @@ extern crate rand;
 extern crate sodiumoxide;
 
 use self::rand::{Rng};
-use self::rand::os::OsRng;
 use sodiumoxide::crypto::scalarmult::curve25519::{Scalar, GroupElement, scalarmult, scalarmult_base};
 
 const CURVE25519_SIZE: usize = 32;

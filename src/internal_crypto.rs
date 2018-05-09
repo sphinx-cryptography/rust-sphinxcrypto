@@ -119,7 +119,7 @@ pub fn hmac(key: &[u8; MAC_KEY_SIZE], data: &[u8]) -> [u8; MAC_SIZE] {
 /// returns the plaintext of the message msg, decrypted via the
 /// Sphinx SPRP with a given key and IV.
 pub fn sprp_decrypt(key: &[u8; SPRP_KEY_SIZE], iv: &[u8; SPRP_IV_SIZE], msg: Vec<u8>) -> Result<Vec<u8>, LionessError> {
-    let mut output: Vec<u8> = Vec::with_capacity(msg.len());
+    let mut output: Vec<u8> = vec![0u8; msg.len()];
     decrypt(key, iv, &mut output, &msg)?;
     Ok(output)
 }
