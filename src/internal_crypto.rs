@@ -103,8 +103,8 @@ pub fn kdf(input: &[u8; KEY_SIZE]) -> PacketKeys {
 pub fn hash(input: &[u8]) -> Vec<u8> {
     let mut h = Blake2b::new(HASH_SIZE);
     h.input(&input);
-    let mut output: Vec<u8> = Vec::with_capacity(HASH_SIZE);
-    h.result(output.as_mut_slice());
+    let mut output: Vec<u8> = vec![0u8; HASH_SIZE];
+    h.result(&mut output);
     output
 }
 
@@ -128,7 +128,7 @@ pub fn sprp_decrypt(key: &[u8; SPRP_KEY_SIZE], iv: &[u8; SPRP_IV_SIZE], msg: Vec
 /// returns the ciphertext of the message msg, encrypted via the
 /// Sphinx SPRP with a given key and IV.
 pub fn sprp_encrypt(key: &[u8; SPRP_KEY_SIZE], iv: &[u8; SPRP_IV_SIZE], msg: Vec<u8>) -> Result<Vec<u8>, LionessError> {
-    let mut output: Vec<u8> = Vec::with_capacity(msg.len());
+    let mut output: Vec<u8> = vec![0u8; msg.len()];
     encrypt(key, iv, &mut output, &msg)?;
     Ok(output)
 }

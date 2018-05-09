@@ -2,6 +2,7 @@
 // Copyright (C) 2018  David Stainton.
 
 extern crate ecdh_wrapper;
+extern crate rustc_serialize;
 
 use std::any::Any;
 
@@ -13,14 +14,16 @@ use super::internal_crypto::{SPRP_KEY_SIZE, SPRP_IV_SIZE, GROUP_ELEMENT_SIZE, Pa
 use super::commands::{RoutingCommand, commands_to_vec, NextHop};
 use super::error::{SphinxHeaderCreateError, SphinxPacketCreateError};
 
+use self::rustc_serialize::hex::ToHex;
+
 
 /// PathHop describes a route hop that a Sphinx Packet will traverse,
 /// along with all of the per-hop Commands (excluding the Next Hop
 /// command).
 pub struct PathHop {
-    id: [u8; NODE_ID_SIZE],
-    public_key: PublicKey,
-    commands: Option<Vec<Box<Any>>>,
+    pub id: [u8; NODE_ID_SIZE],
+    pub public_key: PublicKey,
+    pub commands: Option<Vec<Box<Any>>>,
 }
 
 pub struct SprpKey {
@@ -61,19 +64,16 @@ pub fn create_header(path: Vec<PathHop>) -> Result<([u8; HEADER_SIZE], Vec<SprpK
     group_elements.push(group_element);
 
     let mut i = 1;
-    while i < NUMBER_HOPS {
+    while i < num_hops {
         shared_secret = keypair.exp(&path[i].public_key);
         let mut j = 0;
         while j < i {
             shared_secret = exp(&shared_secret, &keys[j].blinding_factor);
             j += 1;
         }
-        keys[i] = kdf(&shared_secret);
+        keys.push(kdf(&shared_secret));
         keypair.public_key().blind(&keys[i-1].blinding_factor);
-        let _result = group_elements[i].from_bytes(&keypair.public_key().to_vec());
-        if _result.is_err() {
-            return Err(SphinxHeaderCreateError::ImpossibleError);
-        }
+        group_elements.push(keypair.public_key());
         i += 1;
     }
 
@@ -81,14 +81,13 @@ pub fn create_header(path: Vec<PathHop>) -> Result<([u8; HEADER_SIZE], Vec<SprpK
     // for each hop.
     let mut ri_keystream: Vec<Vec<u8>> = vec![];
     let mut ri_padding: Vec<Vec<u8>> = vec![];
-
     let mut i = 0;
-    while i < NUMBER_HOPS {
+    while i < num_hops {
         let mut steam_cipher = StreamCipher::new(&keys[i].header_encryption, &keys[i].header_encryption_iv);
         let stream = steam_cipher.generate(ROUTING_INFO_SIZE + PER_HOP_ROUTING_INFO_SIZE);
-        let ks_len = stream.len() - (i+1) * PER_HOP_ROUTING_INFO_SIZE;
-        ri_keystream[i] = stream[..ks_len].to_vec();
-        ri_padding[i] = stream[..ks_len].to_vec();
+        let ks_len = stream.len() - ((i+1) * PER_HOP_ROUTING_INFO_SIZE);
+        ri_keystream.push(stream[..ks_len].to_vec());
+        ri_padding.push(stream[ks_len..].to_vec());
         if i > 0 {
             let prev_pad_len = ri_padding[i-1].len();
             let current = ri_padding[i-1].clone();
@@ -161,13 +160,14 @@ pub fn create_header(path: Vec<PathHop>) -> Result<([u8; HEADER_SIZE], Vec<SprpK
     header.copy_from_slice(&_header);
 
     let mut sprp_keys = vec![];
-    let i = 0;
+    let mut i = 0;
     while i < num_hops {
         let k = SprpKey{
             key: keys[i].payload_encryption,
             iv: keys[i].payload_encryption_iv,
         };
         sprp_keys.push(k);
+        i += 1
     }
     return Ok((header, sprp_keys));
 }
@@ -193,10 +193,10 @@ pub fn new_packet(path: Vec<PathHop>, payload: [u8; FORWARD_PAYLOAD_SIZE]) -> Re
     let header = _tmp.0;
     let sprp_keys = _tmp.1;
 
-    let mut i = _path_len as i8;
+    let mut i = _path_len as i8 - 1;
     let mut _payload = payload.to_vec();
     while i >= 0 {
-        let _result = sprp_encrypt(&sprp_keys[i as usize].key, &sprp_keys[i as usize].iv, payload.to_vec());
+        let _result = sprp_encrypt(&sprp_keys[i as usize].key, &sprp_keys[i as usize].iv, _payload.clone());
         if _result.is_err() {
             return Err(SphinxPacketCreateError::SPRPEncryptError);
         }

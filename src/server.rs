@@ -45,7 +45,7 @@ pub fn sphinx_packet_unwrap(private_key: &PrivateKey, packet: &mut [u8; PACKET_S
         Err(_) => return (None, None, None, Some(SphinxUnwrapError::ImpossibleError)),
     };
     let shared_secret = private_key.exp(&group_element);
-    let replay_tag_raw = hash(&group_element.to_vec());
+    let replay_tag_raw = hash(&group_element.as_array());
     let mut replay_tag = [0u8; HASH_SIZE];
     replay_tag.copy_from_slice(&replay_tag_raw);
 
@@ -116,20 +116,65 @@ pub fn sphinx_packet_unwrap(private_key: &PrivateKey, packet: &mut [u8; PACKET_S
 mod tests {
     extern crate rand;
     extern crate rustc_serialize;
+    extern crate ecdh_wrapper;
+
+    use self::ecdh_wrapper::{PublicKey, PrivateKey};
 
     use self::rand::Rng;
     use self::rand::os::OsRng;
-    use subtle::ConstantTimeEq;
-    //use self::rustc_serialize::hex::ToHex;
 
-    use super::super::internal_crypto::{MAC_SIZE};
+    use super::sphinx_packet_unwrap;
+    use super::super::client::{new_packet, PathHop};
+    use super::super::constants::{NUMBER_HOPS, NODE_ID_SIZE, FORWARD_PAYLOAD_SIZE};
 
     #[test]
-    fn subtle_test() {
-        let mut rnd = OsRng::new().unwrap();
-        let mac1 = rnd.gen_iter::<u8>().take(MAC_SIZE).collect::<Vec<u8>>();
-        let mac2 = rnd.gen_iter::<u8>().take(MAC_SIZE).collect::<Vec<u8>>();
-        assert_eq!(mac1.ct_eq(&mac2).unwrap_u8(), 0);
-        assert_eq!(mac1.ct_eq(&mac1).unwrap_u8(), 1);
+    fn sphinx_packet_unwrap_test() {
+        let mut mix_keys = vec![];
+        let mut path = vec![];
+        let mut i = 0;
+
+        // make a path
+        while i < NUMBER_HOPS {
+            let private_key = PrivateKey::generate().unwrap();
+            mix_keys.push(private_key);
+            let mut rnd = OsRng::new().unwrap();
+            let _id = rnd.gen_iter::<u8>().take(NODE_ID_SIZE).collect::<Vec<u8>>();
+            let mut id = [0u8; NODE_ID_SIZE];
+            id.copy_from_slice(&_id);
+            let hop = PathHop {
+                id: id,
+                public_key: private_key.public_key(),
+                commands: Some(vec![]),
+            };
+            path.push(hop);
+            i += 1;
+        }
+
+        // make a payload
+        let mut payload = [0u8; FORWARD_PAYLOAD_SIZE];
+        let s = String::from("We must defend our own privacy if we expect to have any. \
+We must come together and create systems which allow anonymous transactions to take place. \
+People have been defending their own privacy for centuries with whispers, darkness, envelopes, \
+closed doors, secret handshakes, and couriers. The technologies of the past did not allow for strong \
+privacy, but electronic technologies do.");
+        let _s_len = s.len();
+        let string_bytes = s.into_bytes();
+        payload[.._s_len].copy_from_slice(&string_bytes);
+
+        let mut start_payload = [0u8; FORWARD_PAYLOAD_SIZE];
+        start_payload.copy_from_slice(&payload);
+
+        let _packet_result = new_packet(path, payload);
+        assert_eq!(_packet_result.is_ok(), true);
+        let mut packet = _packet_result.unwrap();
+
+        i = 0;
+        while i < NUMBER_HOPS {
+            let _unwrap_tuple = sphinx_packet_unwrap(&mix_keys[i], &mut packet);
+            assert_eq!(_unwrap_tuple.3.is_some(), true);
+            i += 1;
+        }
+
+        assert_eq!(start_payload[..], payload[..]);
     }
 }
