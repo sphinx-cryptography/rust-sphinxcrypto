@@ -137,7 +137,7 @@ mod tests {
 
         // make a path
         while i < NUMBER_HOPS {
-            let private_key = PrivateKey::generate().unwrap();
+            let private_key = PrivateKey::generate(&mut r).unwrap();
             mix_keys.push(private_key);
             let mut rnd = OsRng::new().unwrap();
             let _id = rnd.gen_iter::<u8>().take(NODE_ID_SIZE).collect::<Vec<u8>>();

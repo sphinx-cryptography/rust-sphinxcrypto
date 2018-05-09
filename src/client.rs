@@ -50,7 +50,7 @@ pub fn create_header<R: Rng>(rng: &mut R, path: Vec<PathHop>) -> Result<([u8; HE
     }
 
     // Derive the key material for each hop.
-    let _keypair_result = PrivateKey::generate();
+    let _keypair_result = PrivateKey::generate(rng);
     if _keypair_result.is_err() {
         return Err(SphinxHeaderCreateError::KeyGenFail);
     }
