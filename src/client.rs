@@ -19,8 +19,6 @@ use super::commands::{RoutingCommand, commands_to_vec, NextHop};
 use super::error::{SphinxHeaderCreateError, SphinxPacketCreateError, SphinxSurbCreateError,
                    SphinxPacketFromSurbError, SphinxDecryptSurbError};
 
-use self::rustc_serialize::hex::ToHex;
-
 const SPRP_KEY_MATERIAL_SIZE: usize = SPRP_KEY_SIZE + SPRP_IV_SIZE;
 
 
@@ -46,7 +44,17 @@ impl SprpKey {
     }
 }
 
-/// create_header creates and returns a new Sphinx header and a vector of SPRP keys.
+/// create a new sphinx header
+///
+/// # Arguments
+///
+/// * `rng` - an implementation of Rng, a random number generator.
+/// * `path` - a vector of path hops.
+///
+/// # Returns
+///
+/// * Returns a header and a vector of keys or an error.
+///
 pub fn create_header<R: Rng>(rng: &mut R, path: Vec<PathHop>) -> Result<([u8; HEADER_SIZE], Vec<SprpKey>), SphinxHeaderCreateError> {
     let num_hops = path.len();
     if num_hops > NUMBER_HOPS {
@@ -217,7 +225,17 @@ pub fn new_packet<R: Rng>(rng: &mut R, path: Vec<PathHop>, payload: [u8; FORWARD
     return Ok(packet);
 }
 
-/// new_surb returns a new SURB given a path.
+/// create a new SURB
+///
+/// # Arguments
+///
+/// * `rng` - an implementation of Rng, a random number generator.
+/// * `path` - a vector of path hops.
+///
+/// # Returns
+///
+/// * Returns a header and a vector of keys or an error.
+///
 pub fn new_surb<R: Rng>(rng: &mut R, path: Vec<PathHop>) -> Result<([u8; SURB_SIZE], Vec<u8>), SphinxSurbCreateError> {
     // Create a random SPRP key + iv for the recipient to use to encrypt
     // the payload when using the SURB.
@@ -258,6 +276,17 @@ pub fn new_surb<R: Rng>(rng: &mut R, path: Vec<PathHop>) -> Result<([u8; SURB_SI
     return Ok((surb, k));
 }
 
+/// create a sphinx packet from a SURB and payload
+///
+/// # Arguments
+///
+/// * `surb` - a SURB.
+/// * `payload` - a payload to be encapsulated.
+///
+/// # Returns
+///
+/// * Returns a header and a vector of keys or an error.
+///
 pub fn new_packet_from_surb(surb: [u8; SURB_SIZE], payload: [u8; FORWARD_PAYLOAD_SIZE]) -> Result<([u8; PACKET_SIZE], [u8; NODE_ID_SIZE]), SphinxPacketFromSurbError>{
     // Deserialize the SURB.
     let (header, id, key, iv) = array_refs![&surb, HEADER_SIZE, NODE_ID_SIZE, SPRP_KEY_SIZE, SPRP_IV_SIZE];
@@ -275,6 +304,17 @@ pub fn new_packet_from_surb(surb: [u8; SURB_SIZE], payload: [u8; FORWARD_PAYLOAD
     return Ok((packet, *id));
 }
 
+/// decrypt a SURB reply payload
+///
+/// # Arguments
+///
+/// * `payload` - a payload to be decrypted.
+/// * `keys` - a vector of key material.
+///
+/// # Returns
+///
+/// * Returns a decrypted payload or an error.
+///
 pub fn decrypt_surb_payload(payload: [u8; PAYLOAD_SIZE], keys: Vec<u8>) -> Result<Vec<u8>, SphinxDecryptSurbError> {
     let num_hops = keys.len() / SPRP_KEY_MATERIAL_SIZE;
     if keys.len() % SPRP_KEY_MATERIAL_SIZE != 0 || num_hops < 1 {
