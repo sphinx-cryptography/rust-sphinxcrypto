@@ -1,6 +1,6 @@
 // Copyright 2018 David Stainton
 
-//! Sphinx mixnet packet crypto
+//! Sphinx packet crypto
 
 #[macro_use]
 extern crate arrayref;
@@ -16,6 +16,8 @@ pub mod commands;
 pub mod error;
 pub mod server;
 pub mod client;
+pub mod ecdh;
+
 mod internal_crypto;
 mod utils;
-mod ecdh;
+mod sphinx_test;

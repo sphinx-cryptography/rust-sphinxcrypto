@@ -270,7 +270,6 @@ pub fn new_surb<R: Rng>(rng: &mut R, path: Vec<PathHop>) -> Result<([u8; SURB_SI
     _surb.extend(header.iter());
     _surb.extend(_id.iter());
     _surb.extend(key_payload[..].iter());
-
     let mut surb = [0u8; SURB_SIZE];
     surb.copy_from_slice(_surb.as_slice());
 
@@ -295,13 +294,15 @@ pub fn new_packet_from_surb(surb: [u8; SURB_SIZE], payload: [u8; FORWARD_PAYLOAD
     // Assemble the packet.
     let mut packet = [0u8; PACKET_SIZE];
     packet[..HEADER_SIZE].copy_from_slice(header);
-    packet[HEADER_SIZE + PAYLOAD_TAG_SIZE..].copy_from_slice(&payload);
 
     // Encrypt the payload.
-    let _result = sprp_encrypt(key, iv, packet.to_vec());
+    let mut crypt_payload = [0u8; PAYLOAD_SIZE];
+    crypt_payload[PAYLOAD_TAG_SIZE..].copy_from_slice(&payload[..]);
+    let _result = sprp_encrypt(key, iv, crypt_payload[..].to_vec());
     if _result.is_err() {
         return Err(SphinxPacketFromSurbError::ImpossibleError);
     }
+    packet[HEADER_SIZE..].copy_from_slice(_result.unwrap().as_slice());
     return Ok((packet, *id));
 }
 
@@ -317,6 +318,7 @@ pub fn new_packet_from_surb(surb: [u8; SURB_SIZE], payload: [u8; FORWARD_PAYLOAD
 /// * Returns a decrypted payload or an error.
 ///
 pub fn decrypt_surb_payload(payload: [u8; PAYLOAD_SIZE], keys: Vec<u8>) -> Result<Vec<u8>, SphinxDecryptSurbError> {
+    assert!(keys.len() % SPRP_KEY_MATERIAL_SIZE == 0);
     let num_hops = keys.len() / SPRP_KEY_MATERIAL_SIZE;
     if keys.len() % SPRP_KEY_MATERIAL_SIZE != 0 || num_hops < 1 {
         return Err(SphinxDecryptSurbError::InvalidSurbKeys);
@@ -324,7 +326,6 @@ pub fn decrypt_surb_payload(payload: [u8; PAYLOAD_SIZE], keys: Vec<u8>) -> Resul
     if payload.len() < PAYLOAD_TAG_SIZE {
         return Err(SphinxDecryptSurbError::TruncatedPayloadError);
     }
-
     let mut sprp_key = [0u8; SPRP_KEY_SIZE];
     let mut sprp_iv = [0u8; SPRP_IV_SIZE];
     let mut k = &keys[0..];
@@ -332,8 +333,8 @@ pub fn decrypt_surb_payload(payload: [u8; PAYLOAD_SIZE], keys: Vec<u8>) -> Resul
     let mut i = 0;
     while i < num_hops {
         sprp_key.copy_from_slice(&k[..SPRP_KEY_SIZE]);
-        sprp_iv.copy_from_slice(&k[SPRP_IV_SIZE..]);
-        k = &k[SPRP_KEY_MATERIAL_SIZE..];
+        sprp_iv.copy_from_slice(&k[SPRP_KEY_SIZE..SPRP_KEY_SIZE+SPRP_IV_SIZE]);
+        k = &k[SPRP_KEY_SIZE+SPRP_IV_SIZE..];
         if i == num_hops - 1 {
             let _result = sprp_decrypt(&sprp_key, &sprp_iv, b.to_vec());
             if _result.is_err() {
@@ -356,6 +357,5 @@ pub fn decrypt_surb_payload(payload: [u8; PAYLOAD_SIZE], keys: Vec<u8>) -> Resul
     if b[..PAYLOAD_TAG_SIZE].ct_eq(&tag).unwrap_u8() == 0 {
         return Err(SphinxDecryptSurbError::InvalidTag)
     }
-
     return Ok(b[PAYLOAD_TAG_SIZE..].to_vec());
 }
