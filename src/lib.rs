@@ -20,4 +20,3 @@ pub mod ecdh;
 
 mod internal_crypto;
 mod utils;
-mod sphinx_test;
