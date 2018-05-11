@@ -23,10 +23,15 @@ about
 -----
 
 This crate provides a concrete parameterization of the Sphinx
-cryptographic packet format. Sphinx is used in mix networks,
-a kind of traffic analysis resistant communications network.
-Sphinx has recently been used in the design of HORNET and
-Lightening Onion. Sphinx has the following features:
+cryptographic packet format. Although Sphinx is used in mix networks as well
+as various low latency network designs such as Hornet and Lightening Onion,
+there is no standardization of this packet format HOWEVER this implementation
+follows this specification document:
+
+**"Sphinx Mix Network Cryptographic Packet Format Specification"**:
+https://github.com/katzenpost/docs/blob/master/specs/sphinx.txt
+
+Sphinx has the following features:
 
 * Single Use Reply Blocks
 * bitwise unlinkability for each hop
@@ -36,15 +41,9 @@ Lightening Onion. Sphinx has the following features:
 * detection of tagging attacks
 * detection of reply attacks
 
-Sphinx is described in **Sphinx: A Compact and Provably Secure Mix
-Format** by George Danezis and Ian Goldberg. See
+Read the Sphinx paper, **Sphinx: A Compact and Provably Secure Mix Format**
+by George Danezis and Ian Goldberg. See
 <http://research.microsoft.com/en-us/um/people/gdane/papers/sphinx-eprint.pdf>.
-
-If you are interested in using the Sphinx cryptographic packet format
-in your designs then I recommend at least reading the Security and
-Anonymity Consideration sections of the
-**"Sphinx Mix Network Cryptographic Packet Format Specification"**:
-https://github.com/katzenpost/docs/blob/master/specs/sphinx.txt
 
 
 warning
@@ -71,19 +70,10 @@ One of the goals is to remove dependency on the rust-crypto crate,
 currently I am still using it for Blake2b and Chacha20.
 
 
-status
-------
-
-Incomplete. Work-in-progress.
-
-
 acknowledgments
 ---------------
 
-A couple of years ago the initial code here was a partial Sphinx
-implementation (with only the server side) that Jeff Burdges helped me
-write. Recently I decided to make this library essentially a Rust
-language port of Yawning's Katzenpost Sphinx implementation:
+This library is a Rust language port of Yawning's Katzenpost Sphinx implementation:
 
 https://github.com/katzenpost/core/tree/master/sphinx
 
