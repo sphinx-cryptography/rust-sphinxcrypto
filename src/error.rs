@@ -58,7 +58,7 @@ impl fmt::Display for SphinxHeaderCreateError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::SphinxHeaderCreateError::*;
         match *self {
-            PathTooLongError => write!(f, "Path length must not exceed NUMBER_HOPS."),
+            PathTooLongError => write!(f, "Path length must not exceed MAX_HOPS."),
             SerializeCommandsError => write!(f, "Failed to serialize commands."),
             KeyGenFail => write!(f, "Key generation failure."),
             ImpossibleError => write!(f, "This should never happen."),

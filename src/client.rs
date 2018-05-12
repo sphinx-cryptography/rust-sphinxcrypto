@@ -10,7 +10,7 @@ use self::rand::Rng;
 use super::ecdh::{PublicKey, PrivateKey, exp};
 
 use super::utils::xor_assign;
-use super::constants::{NODE_ID_SIZE, HEADER_SIZE, NUMBER_HOPS, ROUTING_INFO_SIZE, PER_HOP_ROUTING_INFO_SIZE,
+use super::constants::{NODE_ID_SIZE, HEADER_SIZE, MAX_HOPS, ROUTING_INFO_SIZE, PER_HOP_ROUTING_INFO_SIZE,
                        V0_AD, FORWARD_PAYLOAD_SIZE, PACKET_SIZE, PAYLOAD_TAG_SIZE, SURB_SIZE, PAYLOAD_SIZE};
 use super::internal_crypto::{SPRP_KEY_SIZE, SPRP_IV_SIZE, GROUP_ELEMENT_SIZE, PacketKeys, kdf,
                              StreamCipher, MAC_SIZE, hmac, sprp_encrypt, sprp_decrypt};
@@ -56,7 +56,7 @@ impl SprpKey {
 ///
 pub fn create_header<R: Rng>(rng: &mut R, path: Vec<PathHop>) -> Result<([u8; HEADER_SIZE], Vec<SprpKey>), SphinxHeaderCreateError> {
     let num_hops = path.len();
-    if num_hops > NUMBER_HOPS {
+    if num_hops > MAX_HOPS {
         return Err(SphinxHeaderCreateError::PathTooLongError);
     }
 
@@ -109,7 +109,7 @@ pub fn create_header<R: Rng>(rng: &mut R, path: Vec<PathHop>) -> Result<([u8; HE
     // Create the routing_information block.
     let mut routing_info = vec![];
     let mut mac = [0u8; MAC_SIZE];
-    let skipped_hops = NUMBER_HOPS - num_hops;
+    let skipped_hops = MAX_HOPS - num_hops;
     if skipped_hops > 0 {
         routing_info = vec![0u8; skipped_hops * PER_HOP_ROUTING_INFO_SIZE];
     }

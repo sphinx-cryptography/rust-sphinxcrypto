@@ -14,7 +14,7 @@ use self::rand::os::OsRng;
 use sphinxcrypto::server::sphinx_packet_unwrap;
 use sphinxcrypto::ecdh::PrivateKey;
 use sphinxcrypto::client::{new_packet, PathHop, new_surb, new_packet_from_surb, decrypt_surb_payload};
-use sphinxcrypto::constants::{NUMBER_HOPS, NODE_ID_SIZE, FORWARD_PAYLOAD_SIZE, RECIPIENT_ID_SIZE, SURB_ID_SIZE, PAYLOAD_SIZE};
+use sphinxcrypto::constants::{MAX_HOPS, NODE_ID_SIZE, FORWARD_PAYLOAD_SIZE, RECIPIENT_ID_SIZE, SURB_ID_SIZE, PAYLOAD_SIZE};
 use sphinxcrypto::commands::{Delay, Recipient, SURBReply};
 
 
@@ -105,7 +105,7 @@ fn sphinx_forward_test() {
     let is_surb = false;
 
     let mut num_hops = 1;
-    while num_hops < NUMBER_HOPS {
+    while num_hops < MAX_HOPS {
         let _tuple = new_path_vector(&mut r, num_hops as u8, is_surb);
         let nodes = _tuple.0;
         let path = _tuple.1;
@@ -155,7 +155,7 @@ fn sphinx_surb_test() {
     let mut r = os_rng();
     let is_surb = true;
     let mut num_hops = 1;
-    while num_hops < NUMBER_HOPS {
+    while num_hops < MAX_HOPS {
         let _tuple = new_path_vector(&mut r, num_hops as u8, is_surb);
         let nodes = _tuple.0;
         let path = _tuple.1;

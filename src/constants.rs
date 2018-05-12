@@ -5,8 +5,8 @@ use super::internal_crypto::{GROUP_ELEMENT_SIZE, MAC_SIZE, SPRP_KEY_SIZE, SPRP_I
 use super::commands::{RECIPIENT_SIZE, SURB_REPLY_SIZE};
 
 
-/// The number of hops a packet will traverse.
-pub const NUMBER_HOPS: usize = 5;
+/// The maximum number of hops a packet will traverse.
+pub const MAX_HOPS: usize = 5;
 
 /// The length of the usable forward payload
 /// of a Sphinx packet in bytes.
@@ -56,4 +56,4 @@ pub const PER_HOP_ROUTING_INFO_SIZE: usize = RECIPIENT_SIZE + SURB_REPLY_SIZE;
 
 /// The size in bytes of the routing info section of the packet
 /// header.
-pub const ROUTING_INFO_SIZE: usize = PER_HOP_ROUTING_INFO_SIZE * NUMBER_HOPS;
+pub const ROUTING_INFO_SIZE: usize = PER_HOP_ROUTING_INFO_SIZE * MAX_HOPS;
