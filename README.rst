@@ -29,7 +29,7 @@ there is no standardization of this packet format HOWEVER this implementation
 follows this specification document:
 
 **"Sphinx Mix Network Cryptographic Packet Format Specification"**:
-https://github.com/katzenpost/docs/blob/master/specs/sphinx.txt
+https://github.com/katzenpost/docs/blob/master/specs/sphinx.rst
 
 Sphinx has the following features:
 
