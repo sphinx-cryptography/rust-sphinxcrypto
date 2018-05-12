@@ -43,6 +43,21 @@ The currently implemented Sphinx cryptographic parameterization is:
 One of the goals is to remove dependency on the rust-crypto crate,
 currently I am still using it for Blake2b and Chacha20.
 
+The Sphinx packet geometry is parameterized in the **constants** submodule.
+
+
+# Usage
+
+To import `sphinxcrypto`, add the following to the dependencies section of
+your project's `Cargo.toml`:
+```toml
+sphinxcrypto = "^0.0.4"
+```
+Then import the crate as:
+```rust,no_run
+extern crate sphinxcrypto;
+```
+
 
 # acknowledgments
 
@@ -54,6 +69,8 @@ These will NOT be binary compatible unless using the exact same cipher
 suite. I don't have an AEZ cipher implementation written in Rust
 handy so I will keep using Lioness for the time being. If someone
 cares about performance then please let me know.
+
+Thanks to Jeff Burdges for helping me with some of my rust problems.
 
 
 # license
