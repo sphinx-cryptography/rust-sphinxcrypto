@@ -1,34 +1,10 @@
-
-rust-sphinxcrypto
-=================
-
-.. image:: https://travis-ci.org/david415/rust-sphinxcrypto.png?branch=master
-    :target: https://www.travis-ci.org/david415/rust-sphinxcrypto
-    :alt: travis build status
-
-.. image:: https://coveralls.io/repos/github/david415/rust-sphinxcrypto/badge.svg?branch=master
-  :target: https://coveralls.io/github/david415/rust-sphinxcrypto
-  :alt: coveralls
-
-.. image:: https://docs.rs/sphinxcrypto/badge.svg
-  :target: https://docs.rs/sphinxcrypto/
-  :alt: api docs
-
-.. image:: https://img.shields.io/crates/v/sphinxcrypto.svg
-  :target: https://crates.io/crates/sphinxcrypto
-  :alt: crates.io link
-
-
-about
------
+# rust-sphinxcrypto
+[![](https://travis-ci.org/david415/rust-sphinxcrypto.png?branch=master)](https://www.travis-ci.org/david415/rust-sphinxcrypto) [![](https://img.shields.io/crates/v/sphinxcrypto.svg)](https://crates.io/crates/sphinxcrypto) [![](https://docs.rs/sphinxcrypto/badge.svg)](https://docs.rs/sphinxcrypto/)
 
 This crate provides a concrete parameterization of the Sphinx
-cryptographic packet format. Although Sphinx is used in mix networks as well
-as various low latency network designs such as Hornet and Lightening Onion,
-there is no standardization of this packet format HOWEVER this implementation
-follows this specification document:
+cryptographic packet format and follows this "Sphinx Mix Network
+Cryptographic Packet Format Specification" document:
 
-**"Sphinx Mix Network Cryptographic Packet Format Specification"**:
 https://github.com/katzenpost/docs/blob/master/specs/sphinx.rst
 
 Sphinx has the following features:
@@ -46,16 +22,14 @@ by George Danezis and Ian Goldberg. See
 <http://research.microsoft.com/en-us/um/people/gdane/papers/sphinx-eprint.pdf>.
 
 
-warning
--------
+# warning
 
 This code has not been formally audited by a cryptographer. It
 therefore should not be considered safe or correct. Use it at your own
 risk!
 
 
-details
--------
+# details
 
 The currently implemented Sphinx cryptographic parameterization is:
 
@@ -70,8 +44,7 @@ One of the goals is to remove dependency on the rust-crypto crate,
 currently I am still using it for Blake2b and Chacha20.
 
 
-acknowledgments
----------------
+# acknowledgments
 
 This library is a Rust language port of Yawning's Katzenpost Sphinx implementation:
 
@@ -83,7 +56,6 @@ handy so I will keep using Lioness for the time being. If someone
 cares about performance then please let me know.
 
 
-license
--------
+# license
 
 MIT License
