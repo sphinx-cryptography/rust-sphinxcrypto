@@ -6,7 +6,6 @@
 extern crate arrayref;
 extern crate sodiumoxide;
 extern crate crypto;
-extern crate rustc_serialize;
 extern crate byteorder;
 extern crate rust_lioness;
 extern crate subtle;
