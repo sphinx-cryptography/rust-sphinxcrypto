@@ -25,7 +25,7 @@ const MAC_OFFSET: usize = ROUTING_INFO_OFFSET + ROUTING_INFO_SIZE;
 ///
 /// # Returns
 ///
-/// * 3-tuple containing (payload, replay_tag, vector of routing commands) || SphinxUnwrapError
+/// * 4-tuple containing (payload, replay_tag, vector of routing commands, SphinxUnwrapError)
 ///
 pub fn sphinx_packet_unwrap(private_key: &PrivateKey, packet: &mut [u8; PACKET_SIZE]) -> (Option<Vec<u8>>, Option<[u8; HASH_SIZE]>, Option<Vec<Box<Any>>>, Option<SphinxUnwrapError>) {
     // Split into mutable references and validate the AD

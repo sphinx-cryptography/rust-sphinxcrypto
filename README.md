@@ -33,12 +33,11 @@ risk!
 
 The currently implemented Sphinx cryptographic parameterization is:
 
-* EXP(X, Y) - X25519 sodiumoxide crate
-* MAC(K, M), H(M) - Blake2b blake2b crate
-* S(K, IV) - Chacha20 chacha crate
-* KDF(SALT, IKM) - SHAKE256 tiny-keccak crate
-* SPRP_Encrypt(K, M)/SPRP_Decrypt(K, M) - Lioness
-    with the following: Blake2b and Chacha20. rust-lioness crate
+* EXP(X, Y) - X25519
+* MAC(K, M), H(M) - Blake2b
+* S(K, IV) - Chacha20
+* KDF(SALT, IKM) - SHAKE256
+* SPRP_Encrypt(K, M)/SPRP_Decrypt(K, M) - Lioness composed with: Blake2b and Chacha20.
 
 The Sphinx packet geometry is parameterized in the **constants** submodule.
 
