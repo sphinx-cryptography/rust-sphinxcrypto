@@ -5,10 +5,12 @@
 #[macro_use]
 extern crate arrayref;
 extern crate sodiumoxide;
-extern crate crypto;
 extern crate byteorder;
 extern crate rust_lioness;
 extern crate subtle;
+extern crate keystream;
+extern crate chacha;
+extern crate blake2b;
 
 pub mod constants;
 pub mod commands;

@@ -3,18 +3,21 @@
 //! Sphinx crypto primitives
 
 extern crate rust_lioness;
-extern crate crypto;
+extern crate chacha;
+extern crate keystream;
 extern crate tiny_keccak;
+extern crate blake2b;
 
 use self::rust_lioness::{LionessError, encrypt, decrypt, RAW_KEY_SIZE, IV_SIZE};
-use crypto::chacha20::ChaCha20;
-use crypto::symmetriccipher::SynchronousStreamCipher;
-use crypto::blake2b::Blake2b;
-use crypto::digest::Digest;
-use self::tiny_keccak::Keccak;
-use std::vec::Vec;
 
 use super::ecdh::KEY_SIZE;
+
+use self::chacha::ChaCha as ChaCha20;
+use self::keystream::KeyStream;
+use self::blake2b::{blake2b, blake2b_keyed};
+use self::tiny_keccak::Keccak;
+
+
 
 /// the output size of the unkeyed hash in bytes
 pub const HASH_SIZE: usize = 32;
@@ -43,7 +46,6 @@ pub const GROUP_ELEMENT_SIZE: usize = KEY_SIZE;
 const KDF_OUTPUT_SIZE: usize = MAC_KEY_SIZE + STREAM_KEY_SIZE + STREAM_IV_SIZE + SPRP_KEY_SIZE + SPRP_IV_SIZE + KEY_SIZE;
 
 /// stream cipher for sphinx crypto usage
-#[derive(Clone, Copy)]
 pub struct StreamCipher {
     cipher: ChaCha20,
 }
@@ -52,20 +54,20 @@ impl StreamCipher {
     /// create a new StreamCipher struct
     pub fn new(key: &[u8; STREAM_KEY_SIZE], iv: &[u8; STREAM_IV_SIZE]) -> StreamCipher {
         StreamCipher {
-            cipher: ChaCha20::new(key, iv),
+            cipher: ChaCha20::new_ietf(key, iv),
         }
     }
 
     /// given a key return a cipher stream of length n
     pub fn generate(&mut self, n: usize) -> Vec<u8> {
-        let zeros = vec![0u8; n];
         let mut output = vec![0u8; n];
-        self.cipher.process(zeros.as_slice(), output.as_mut_slice());
+        self.cipher.xor_read(&mut output).unwrap();
         output
     }
 
     pub fn xor_key_stream(&mut self, mut dst: &mut [u8], src: &[u8]) {
-        self.cipher.process(&src, &mut dst);
+        dst.copy_from_slice(src);
+        self.cipher.xor_read(&mut dst).unwrap();
     }
 }
 
@@ -100,20 +102,18 @@ pub fn kdf(input: &[u8; KEY_SIZE]) -> PacketKeys {
 
 /// hash calculates the digest of a message
 pub fn hash(input: &[u8]) -> Vec<u8> {
-    let mut h = Blake2b::new(HASH_SIZE);
-    h.input(&input);
-    let mut output: Vec<u8> = vec![0u8; HASH_SIZE];
-    h.result(&mut output);
-    output
+    let h = blake2b(HASH_SIZE, input);
+    let mut out = Vec::new();
+    out.extend(h.iter());
+    return out;
 }
 
 /// hmac returns the hmac of the data using a given key
 pub fn hmac(key: &[u8; MAC_KEY_SIZE], data: &[u8]) -> [u8; MAC_SIZE] {
-    let mut m = Blake2b::new_keyed(MAC_SIZE, &key[..]);
-    m.input(data);
-    let mut out = [0u8; 16];
-    m.result(&mut out);
-    out
+    let _out = blake2b_keyed(MAC_SIZE, key, data);
+    let mut out = [0u8; MAC_SIZE];
+    out.copy_from_slice(&_out.to_vec());
+    return out;
 }
 
 /// returns the plaintext of the message msg, decrypted via the

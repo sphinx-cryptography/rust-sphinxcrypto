@@ -48,7 +48,7 @@ pub fn sphinx_packet_unwrap(private_key: &PrivateKey, packet: &mut [u8; PACKET_S
     let shared_secret = private_key.exp(&group_element);
     let replay_tag_raw = hash(&group_element.as_array());
     let mut replay_tag = [0u8; HASH_SIZE];
-    replay_tag.copy_from_slice(&replay_tag_raw);
+    replay_tag[..].copy_from_slice(&replay_tag_raw);
 
     // Derive the various keys required for packet processing.
     let keys = kdf(&shared_secret);
