@@ -3,7 +3,6 @@
 
 extern crate rand;
 
-use std::any::Any;
 use subtle::ConstantTimeEq;
 use self::rand::Rng;
 
@@ -14,7 +13,7 @@ use super::constants::{NODE_ID_SIZE, HEADER_SIZE, MAX_HOPS, ROUTING_INFO_SIZE, P
                        V0_AD, FORWARD_PAYLOAD_SIZE, PACKET_SIZE, PAYLOAD_TAG_SIZE, SURB_SIZE, PAYLOAD_SIZE};
 use super::internal_crypto::{SPRP_KEY_SIZE, SPRP_IV_SIZE, GROUP_ELEMENT_SIZE, PacketKeys, kdf,
                              StreamCipher, MAC_SIZE, hmac, sprp_encrypt, sprp_decrypt};
-use super::commands::{RoutingCommand, commands_to_vec, NextHop};
+use super::commands::{RoutingCommand, commands_to_vec};
 use super::error::{SphinxHeaderCreateError, SphinxPacketCreateError, SphinxSurbCreateError,
                    SphinxPacketFromSurbError, SphinxDecryptSurbError};
 
@@ -24,10 +23,11 @@ const SPRP_KEY_MATERIAL_SIZE: usize = SPRP_KEY_SIZE + SPRP_IV_SIZE;
 /// PathHop describes a route hop that a Sphinx Packet will traverse,
 /// along with all of the per-hop Commands (excluding the Next Hop
 /// command).
+#[derive(Clone)]
 pub struct PathHop {
     pub id: [u8; NODE_ID_SIZE],
     pub public_key: PublicKey,
-    pub commands: Option<Vec<Box<Any>>>,
+    pub commands: Option<Vec<RoutingCommand>>,
 }
 
 /// SprpKey is a struct that contains a SPRP key and SPRP IV.
@@ -120,7 +120,7 @@ pub fn create_header<R: Rng>(rng: &mut R, path: Vec<PathHop>) -> Result<([u8; HE
 
         // serialize commands for this hop
         let _cmd_vec = path[i as usize].commands.as_ref();
-        let _cmd_bytes_result = commands_to_vec(_cmd_vec.as_ref().unwrap(), _is_terminal);
+        let _cmd_bytes_result = commands_to_vec(_cmd_vec.unwrap(), _is_terminal);
         if _cmd_bytes_result.is_err() {
             return Err(SphinxHeaderCreateError::SerializeCommandsError);
         }
@@ -129,7 +129,7 @@ pub fn create_header<R: Rng>(rng: &mut R, path: Vec<PathHop>) -> Result<([u8; HE
         if !_is_terminal {
             let _next_id = path[i as usize + 1].id.clone();
             let _next_mac = mac.clone();
-            let _next_cmd = NextHop{
+            let _next_cmd = RoutingCommand::NextHop{
                 id: _next_id,
                 mac: _next_mac,
             };

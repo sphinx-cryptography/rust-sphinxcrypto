@@ -6,7 +6,6 @@ extern crate sphinxcrypto;
 //extern crate rustc_serialize;
 
 //use self::rustc_serialize::hex::ToHex;
-use std::any::Any;
 use self::rand::Rng;
 use self::rand::os::OsRng;
 
@@ -15,7 +14,7 @@ use sphinxcrypto::server::sphinx_packet_unwrap;
 use sphinxcrypto::ecdh::PrivateKey;
 use sphinxcrypto::client::{new_packet, PathHop, new_surb, new_packet_from_surb, decrypt_surb_payload};
 use sphinxcrypto::constants::{MAX_HOPS, NODE_ID_SIZE, FORWARD_PAYLOAD_SIZE, RECIPIENT_ID_SIZE, SURB_ID_SIZE, PAYLOAD_SIZE};
-use sphinxcrypto::commands::{Delay, Recipient, SURBReply};
+use sphinxcrypto::commands::{RoutingCommand};
 
 
 struct NodeParams {
@@ -52,29 +51,29 @@ fn new_path_vector<R: Rng>(rng: &mut R, num_hops: u8, is_surb: bool) -> (Vec<Nod
     let mut path = vec![];
     i = 0;
     while i < num_hops {
-        let mut commands: Vec<Box<Any>> = vec![];
+        let mut commands: Vec<RoutingCommand> = vec![];
         if i < num_hops - 1 {
             // Non-terminal hop, add the delay.
-            let delay = Delay {
+            let delay = RoutingCommand::Delay {
                 delay: DELAY_BASE * (i as u32 + 1),
             };
-            commands.push(Box::new(delay));
+            commands.push(delay);
         } else {
 	    // Terminal hop, add the recipient.
             let mut rcpt_id = [0u8; RECIPIENT_ID_SIZE];
             rng.fill_bytes(&mut rcpt_id);
-            let rcpt = Recipient {
+            let rcpt = RoutingCommand::Recipient {
                 id: rcpt_id,
             };
-            commands.push(Box::new(rcpt));
+            commands.push(rcpt);
 
             if is_surb {
                 let mut surb_id = [0u8; SURB_ID_SIZE];
                 rng.fill_bytes(&mut surb_id);
-                let surb_reply = SURBReply {
+                let surb_reply = RoutingCommand::SURBReply {
                     id: surb_id,
                 };
-                commands.push(Box::new(surb_reply));
+                commands.push(surb_reply);
             }
         }
         let hop = PathHop {
@@ -109,6 +108,7 @@ fn sphinx_forward_test() {
         let _tuple = new_path_vector(&mut r, num_hops as u8, is_surb);
         let nodes = _tuple.0;
         let path = _tuple.1;
+        let path_c = path.clone();
 
 	// Create the packet.
         let _packet_result = new_packet(&mut r, path, payload);
@@ -118,20 +118,47 @@ fn sphinx_forward_test() {
         let mut i = 0;
         while i < num_hops {
             let _unwrap_tuple = sphinx_packet_unwrap(&nodes[i].private_key, &mut packet);
-            let option_cmds = _unwrap_tuple.2;
+            let maybe_cmds = _unwrap_tuple.2;
             let err = _unwrap_tuple.3;
             let final_payload = _unwrap_tuple.0;
-            let cmds = option_cmds.unwrap();
+            let cmds = maybe_cmds.unwrap();
 
             assert!(err.is_none());
             if i == nodes.len() - 1 {
                 assert!(cmds.len() == 1);
                 assert_eq!(final_payload.unwrap().as_slice(), &payload[..]);
-                assert!(cmds[0].downcast_ref::<Recipient>().is_some());
+                let hop = path_c[i].to_owned().commands;
+                match &hop.unwrap()[0] {
+                    RoutingCommand::Recipient{ id } => {
+                        let _id = id;
+                        match cmds[0] {
+                            RoutingCommand::Recipient{ id } => {
+                                assert_eq!(id[..], _id[..]);
+                            },
+                            _ => panic!("wtf"),
+                        }
+                    }
+                    _ => panic!("wtf"),
+                }
             } else {
                 assert!(cmds.len() == 2);
                 assert!(final_payload.is_none());
-                assert!(cmds[0].downcast_ref::<Delay>().is_some());
+                let _delay;
+                let hop = path_c[i].to_owned().commands;
+                match &hop.unwrap()[0] {
+                    RoutingCommand::Delay{ delay } => {
+                        _delay = delay;
+                        match cmds[0] {
+                            RoutingCommand::Delay {
+                                delay
+                            } => {
+                                assert_eq!(delay, *_delay);
+                            }
+                            _ => panic!("wtf"),
+                        }
+                    }
+                    _ => panic!("wtf"),
+                }
             }
             i += 1;
         }
@@ -159,6 +186,7 @@ fn sphinx_surb_test() {
         let _tuple = new_path_vector(&mut r, num_hops as u8, is_surb);
         let nodes = _tuple.0;
         let path = _tuple.1;
+        let path_c = path.clone();
         let (surb, surb_keys) = new_surb(&mut r, path).unwrap();
         let (mut packet, _next_mix) = new_packet_from_surb(surb, payload).unwrap();
         let mut i = 0;
@@ -171,11 +199,24 @@ fn sphinx_surb_test() {
             assert!(err.is_none());
             assert!(cmds.len() == 2);
             if i == nodes.len() - 1 {
+                match cmds[0] {
+                    RoutingCommand::Recipient { id } => {
+                        let _id = id;
+                        let hop = path_c[i].to_owned().commands;
+                        match &hop.unwrap()[0] {
+                            RoutingCommand::Recipient { id } => {
+                                assert_eq!(_id[..], id[..]);
+                            },
+                            _ => panic!("wtf"),
+                        }
+                    },
+                    _ => panic!("wtf"),
+                }
                 let mut _payload = [0u8; PAYLOAD_SIZE];
                 _payload.copy_from_slice(final_payload_res.unwrap().as_slice());
                 let _result = decrypt_surb_payload(_payload, surb_keys.clone());
                 assert!(_result.is_ok());
-                //assert_eq!(plaintext, payload.to_vec());
+                assert_eq!(_result.unwrap(), payload.to_vec());
             }
             i += 1;
         }

@@ -1,10 +1,9 @@
 // sphinx.rs - sphinx cryptographic packet format
 // Copyright (C) 2018  David Stainton.
 
-use std::any::Any;
 use subtle::ConstantTimeEq;
 
-use super::commands::parse_routing_commands;
+use super::commands::{RoutingCommand, parse_routing_commands};
 use super::constants::{PACKET_SIZE, PAYLOAD_SIZE, AD_SIZE, ROUTING_INFO_SIZE, V0_AD, PER_HOP_ROUTING_INFO_SIZE, PAYLOAD_TAG_SIZE};
 use super::ecdh::{PublicKey, PrivateKey};
 use super::error::SphinxUnwrapError;
@@ -27,9 +26,9 @@ const MAC_OFFSET: usize = ROUTING_INFO_OFFSET + ROUTING_INFO_SIZE;
 ///
 /// * 4-tuple containing (payload, replay_tag, vector of routing commands, SphinxUnwrapError)
 ///
-pub fn sphinx_packet_unwrap(private_key: &PrivateKey, packet: &mut [u8; PACKET_SIZE]) -> (Option<Vec<u8>>, Option<[u8; HASH_SIZE]>, Option<Vec<Box<Any>>>, Option<SphinxUnwrapError>) {
+pub fn sphinx_packet_unwrap(private_key: &PrivateKey, packet: &mut [u8; PACKET_SIZE]) -> (Option<Vec<u8>>, Option<[u8; HASH_SIZE]>, Option<Vec<RoutingCommand>>, Option<SphinxUnwrapError>) {
     // Split into mutable references and validate the AD
-    let (authed_header, mac, payload) = mut_array_refs![packet, MAC_OFFSET, MAC_SIZE, PAYLOAD_SIZE];
+    let (authed_header, _mac, payload) = mut_array_refs![packet, MAC_OFFSET, MAC_SIZE, PAYLOAD_SIZE];
     let (ad, group_element_bytes, routing_info) = mut_array_refs![authed_header, AD_SIZE, GROUP_ELEMENT_SIZE, ROUTING_INFO_SIZE];
     if ad.ct_eq(&V0_AD).unwrap_u8() == 0 {
         return (None, None, None, Some(SphinxUnwrapError::InvalidPacketError));
@@ -62,7 +61,7 @@ pub fn sphinx_packet_unwrap(private_key: &PrivateKey, packet: &mut [u8; PACKET_S
     let calculated_mac = hmac(&mac_key, &_data);
 
     // compare MAC in constant time
-    if calculated_mac.ct_eq(mac).unwrap_u8() == 0 {
+    if calculated_mac.ct_eq(_mac).unwrap_u8() == 0 {
         return (None, Some(replay_tag), None, Some(SphinxUnwrapError::MACError));
     }
 
@@ -107,10 +106,17 @@ pub fn sphinx_packet_unwrap(private_key: &PrivateKey, packet: &mut [u8; PACKET_S
         group_element_bytes.copy_from_slice(&group_element.as_array());
         routing_info.copy_from_slice(new_routing_info);
         let next_hop = maybe_next_hop.unwrap();
-        mac.copy_from_slice(&next_hop.mac);
+        match next_hop {
+            RoutingCommand::NextHop{
+                id, mac
+            } => {
+                _mac.copy_from_slice(&mac);
+            },
+            _ => {},  // not reached
+        }
         payload.copy_from_slice(&decrypted_payload);
         final_payload = None;
-        final_cmds.push(Box::new(next_hop));
+        final_cmds.push(next_hop);
     } else {
         // Validate the payload tag, iff this is not a SURB reply.
         if !maybe_surb_reply.is_some() {
@@ -121,7 +127,7 @@ pub fn sphinx_packet_unwrap(private_key: &PrivateKey, packet: &mut [u8; PACKET_S
             final_payload = Some(decrypted_payload[PAYLOAD_TAG_SIZE..].to_vec());
         } else {
             final_payload = Some(decrypted_payload);
-            final_cmds.push(Box::new(maybe_surb_reply.unwrap()));
+            final_cmds.push(maybe_surb_reply.unwrap());
         }
     }
 
