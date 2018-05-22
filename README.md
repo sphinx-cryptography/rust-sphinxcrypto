@@ -47,7 +47,7 @@ The Sphinx packet geometry is parameterized in the **constants** submodule.
 To import `sphinxcrypto`, add the following to the dependencies section of
 your project's `Cargo.toml`:
 ```toml
-sphinxcrypto = "^0.0.4"
+sphinxcrypto = "^0.0.5"
 ```
 Then import the crate as:
 ```rust,no_run
