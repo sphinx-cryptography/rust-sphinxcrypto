@@ -108,7 +108,7 @@ pub fn sphinx_packet_unwrap(private_key: &PrivateKey, packet: &mut [u8; PACKET_S
         let next_hop = maybe_next_hop.unwrap();
         match next_hop {
             RoutingCommand::NextHop{
-                id, mac
+                id: _, mac
             } => {
                 _mac.copy_from_slice(&mac);
             },

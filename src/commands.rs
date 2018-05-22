@@ -190,6 +190,12 @@ pub fn commands_to_vec(commands: &Vec<RoutingCommand>, is_terminal: bool) -> Res
     for cmd in commands.iter() {
         output.extend(cmd.to_vec());
     }
+    if output.len() > PER_HOP_ROUTING_INFO_SIZE {
+        return Err("sphinx: invalid commands, oversized serialized block")
+    }
+    if !is_terminal && PER_HOP_ROUTING_INFO_SIZE - output.len() < NEXT_HOP_SIZE {
+        return Err("sphinx: invalid commands, insufficient remaining capacity")
+    }
     return Ok(output);
 }
 
@@ -212,22 +218,22 @@ pub fn parse_routing_commands(b: &[u8]) -> Result<(Vec<RoutingCommand>, Option<R
         let cmd = _cmd.unwrap();
         match cmd {
             RoutingCommand::NextHop{
-                id, mac
+                id: _, mac: _
             } => {
                 maybe_next_hop = Some(cmd);
             },
             RoutingCommand::SURBReply{
-                id
+                id: _,
             } => {
                 maybe_surb_reply = Some(cmd);
             },
             RoutingCommand::Recipient{
-                id
+                id: _,
             } => {
                 ret.push(cmd);
             },
             RoutingCommand::Delay{
-                delay
+                delay: _,
             } => {
                 ret.push(cmd);
             },
@@ -266,13 +272,13 @@ mod tests {
         let (maybe_cmd, _) = RoutingCommand::from_bytes(&raw1).unwrap();
         let cmd_p = maybe_cmd.unwrap();
         match cmd_p {
-            _ => {}
             RoutingCommand::NextHop{
                 id, mac
             } => {
                 assert_eq!(id, _id);
                 assert_eq!(mac, _mac);
             }
+            _ => {}
         }
         let raw2 = cmd_p.to_vec();
         assert_eq!(raw1, raw2);
@@ -287,12 +293,12 @@ mod tests {
         let (maybe_cmd, _) = RoutingCommand::from_bytes(&raw1).unwrap();
         let cmd_p = maybe_cmd.unwrap();
         match cmd_p {
-            _ => {}
             RoutingCommand::Recipient{
                 id
             } => {
                 assert_eq!(id[..], _id[..]);
             }
+            _ => {}
         }
         let raw2 = cmd_p.to_vec();
         assert_eq!(raw1, raw2);
@@ -307,12 +313,12 @@ mod tests {
         let (maybe_cmd, _) = RoutingCommand::from_bytes(&raw1).unwrap();
         let cmd_p = maybe_cmd.unwrap();
         match cmd_p {
-            _ => {}
             RoutingCommand::SURBReply{
                 id
             } => {
                 assert_eq!(id[..], _id[..]);
             }
+            _ => {}
         }
         let raw2 = cmd_p.to_vec();
         assert_eq!(raw1, raw2);
@@ -326,12 +332,12 @@ mod tests {
         let (maybe_cmd, _) = RoutingCommand::from_bytes(&raw1).unwrap();
         let cmd_p = maybe_cmd.unwrap();
         match cmd_p {
-            _ => {}
             RoutingCommand::Delay{
                 delay
             } => {
                 assert_eq!(delay, _delay);
             }
+            _ => {}
         }
         let raw2 = cmd_p.to_vec();
         assert_eq!(raw1, raw2);
