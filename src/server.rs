@@ -21,6 +21,24 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+//! An implementation of the server-side of Sphinx, packet processing.
+//! Mix nodes process incoming packets first by performing the
+//! Sphinx Packet Unwrap operation to authenticate and decrypt the packet, and
+//! if applicable prepare the packet to be forwarded to the next node.
+//!
+//! If the Sphinx Packet Unwrap operation returns an error for any given packet, the packet
+//! MUST be discarded with no additional processing.
+//!
+//! After a packet has been unwrapped successfully, a replay detection
+//! tag is checked to ensure that the packet has not been seen before.
+//! If the packet is a replay, the packet MUST be discarded with no
+//! additional processing.
+//!
+//! The routing commands for the current hop are interpreted and
+//! executed, and finally the packet is forwarded to the next mix node
+//! over the network or presented to the application if the current
+//! node is the final recipient.
+//! """
 
 use subtle::ConstantTimeEq;
 

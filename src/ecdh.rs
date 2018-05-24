@@ -20,7 +20,9 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-    
+
+//! Wrapper for X25519 Diffie-Hellman and blinding operations.
+
 extern crate rand;
 extern crate sodiumoxide;
 
@@ -29,7 +31,7 @@ use sodiumoxide::crypto::scalarmult::curve25519::{Scalar, GroupElement, scalarmu
 
 const CURVE25519_SIZE: usize = 32;
 
-// KEY_SIZE is the size in bytes of the keys.
+/// KEY_SIZE is the size in bytes of the keys.
 pub const KEY_SIZE: usize = CURVE25519_SIZE;
 
 pub fn exp(x: &[u8; KEY_SIZE], y: &[u8; KEY_SIZE]) -> [u8; 32] {
@@ -98,7 +100,7 @@ impl PrivateKey {
         self.public_key
     }
     
-    /// Exp calculates the shared secret with the provided public key.
+    /// exp calculates the shared secret with the provided public key.
     pub fn exp(&self, public_key: &PublicKey) -> [u8; KEY_SIZE] {
         exp(&public_key._key, &self._priv_bytes)
     }

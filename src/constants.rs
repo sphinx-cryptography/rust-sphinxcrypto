@@ -21,6 +21,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+//! The Sphinx packet geometry is parameterization.
+
 use super::internal_crypto::{GROUP_ELEMENT_SIZE, MAC_SIZE, SPRP_KEY_SIZE, SPRP_IV_SIZE};
 use super::commands::{RECIPIENT_SIZE, SURB_REPLY_SIZE};
 

@@ -10,12 +10,12 @@ https://github.com/katzenpost/docs/blob/master/specs/sphinx.rst
 Sphinx has the following features:
 
 * Single Use Reply Blocks
-* bitwise unlinkability for each hop
+* per hop bitwise unlinkability
 * indistinguishable replies
-* hiding the path length
-* hiding the relay position
-* detection of tagging attacks
-* detection of reply attacks
+* hidden the path length
+* hidden the relay position
+* tagging attack detection
+* reply attack detection
 
 Read the Sphinx paper, **Sphinx: A Compact and Provably Secure Mix Format**
 by George Danezis and Ian Goldberg. See https://cypherpunks.ca/~iang/pubs/Sphinx_Oakland09.pdf
