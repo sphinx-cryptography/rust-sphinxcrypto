@@ -104,7 +104,7 @@ privacy, but electronic technologies do.");
     let is_surb = false;
 
     let mut num_hops = 1;
-    while num_hops < MAX_HOPS {
+    while num_hops <= MAX_HOPS {
         let _tuple = new_path_vector(&mut r, num_hops as u8, is_surb);
         let nodes = _tuple.0;
         let path = _tuple.1;
@@ -165,7 +165,7 @@ privacy, but electronic technologies do.");
         num_hops += 1;
     }
 
-} // end of fn sphinx_packet_unwrap_test() {
+}
 
 #[test]
 fn sphinx_surb_test() {
@@ -182,7 +182,7 @@ hurried on, Alice started to her feet.");
     let mut r = os_rng();
     let is_surb = true;
     let mut num_hops = 1;
-    while num_hops < MAX_HOPS {
+    while num_hops <= MAX_HOPS {
         let _tuple = new_path_vector(&mut r, num_hops as u8, is_surb);
         let nodes = _tuple.0;
         let path = _tuple.1;
