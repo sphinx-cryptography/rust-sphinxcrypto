@@ -18,9 +18,7 @@ Sphinx has the following features:
 * detection of reply attacks
 
 Read the Sphinx paper, **Sphinx: A Compact and Provably Secure Mix Format**
-by George Danezis and Ian Goldberg. See
-<http://research.microsoft.com/en-us/um/people/gdane/papers/sphinx-eprint.pdf>.
-
+by George Danezis and Ian Goldberg. See https://cypherpunks.ca/~iang/pubs/Sphinx_Oakland09.pdf
 
 # warning
 
