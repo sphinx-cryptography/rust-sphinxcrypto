@@ -40,7 +40,7 @@ pub const SURB_REPLY_SIZE: usize = 1 + SURB_ID_SIZE;
 /// size of the delay command in bytes
 pub const DELAY_SIZE: usize = 1 + 4;
 
-/// Sphinx routing commands.
+/// Sphinx routing command byte constants.
 const NULL_CMD: u8 = 0x00;
 const NEXT_HOP_CMD: u8 = 0x01;
 const RECIPIENT_CMD: u8 = 0x02;
@@ -49,6 +49,9 @@ const SURB_REPLY_CMD: u8 = 0x03;
 /// Implementation defined commands.
 const DELAY_CMD: u8 = 0x80;
 
+/// Sphinx routing commands are decrypted by each mix in the route.
+/// The Poisson mix strategy uses the Delay command, other mix
+/// strategies may need to add additional commands.
 #[derive(Clone)]
 pub enum RoutingCommand {
     /// The next hop command is used to route
@@ -111,6 +114,7 @@ impl RoutingCommand {
         }
     }
 
+    /// to_vec returns a vector of serialized commands
     pub fn to_vec(&self) -> Vec<u8> {
         match *self {
             RoutingCommand::NextHop{
