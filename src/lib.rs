@@ -26,10 +26,10 @@
 //!
 //! # The Sphinx Cryptographic Packet Format
 //!
-//! Sphinx can be used to build high or low latency traffic analysis resistance
-//! communication networks.
+//! The Sphinx cryptographic packet format is a compact and provably
+//! secure design introduced by George Danezis and Ian Goldberg.
 //!
-//! # Features of the Sphinx packet format
+//! # Security Features of the Sphinx packet format
 //!
 //! * Single Use Reply Blocks
 //! * per hop bitwise unlinkability
@@ -39,11 +39,9 @@
 //! * tagging attack detection
 //! * reply attack detection
 //!
-//! **Sphinx Mix Network Cryptographic Packet Format Specification**\
-//! https://github.com/katzenpost/docs/blob/master/specs/sphinx.rst
+//! **[Sphinx Mix Network Cryptographic Packet Format Specification](https://github.com/katzenpost/docs/blob/master/specs/sphinx.rst)**
 //!
-//! **Sphinx: A Compact and Provably Secure Mix Format**\
-//! https://cypherpunks.ca/~iang/pubs/Sphinx_Oakland09.pdf
+//! **[Sphinx: A Compact and Provably Secure Mix Format](https://cypherpunks.ca/~iang/pubs/Sphinx_Oakland09.pdf)**
 
 #[macro_use]
 extern crate arrayref;

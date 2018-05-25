@@ -21,6 +21,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+//! an excerpt from **[Sphinx Mix Network Cryptographic Packet Format Specification](https://github.com/katzenpost/docs/blob/master/specs/sphinx.rst#sphinx-packet-processing)**:
+//! """
 //! An implementation of the server-side of Sphinx, packet processing.
 //! Mix nodes process incoming packets first by performing the
 //! Sphinx Packet Unwrap operation to authenticate and decrypt the packet, and
