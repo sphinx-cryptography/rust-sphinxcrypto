@@ -69,4 +69,4 @@ Thanks to Jeff Burdges for helping me with some of my rust problems.
 
 # license
 
-MIT License
+GNU AFFERO GENERAL PUBLIC LICENSE
