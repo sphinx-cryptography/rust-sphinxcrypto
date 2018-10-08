@@ -1,6 +1,6 @@
 [package]
 name = "sphinxcrypto"
-version = "0.0.6"
+version = "0.0.7"
 authors = ["David Stainton <dstainton415@gmail.com>"]
 description = "Sphinx cryptographic packet format library"
 homepage = "https://github.com/applied-mixnetworks/rust-sphinxcrypto"
@@ -8,7 +8,7 @@ repository = "https://github.com/applied-mixnetworks/rust-sphinxcrypto"
 documentation = "https://docs.rs/sphinxcrypto/"
 readme = "README.md"
 keywords = ["cryptography", "sphinx", "mixnet", "crypto", "mix"]
-license = "MIT"
+license = "AGPL-3.0-only"
 
 [dependencies]
 rust-lioness = "^0.1.4"
