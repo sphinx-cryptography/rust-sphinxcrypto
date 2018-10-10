@@ -38,7 +38,7 @@
 
 #[macro_use]
 extern crate arrayref;
-extern crate sodiumoxide;
+extern crate ecdh_wrapper;
 extern crate byteorder;
 extern crate rust_lioness;
 extern crate subtle;
@@ -51,7 +51,6 @@ pub mod commands;
 pub mod error;
 pub mod server;
 pub mod client;
-pub mod ecdh;
 
 mod internal_crypto;
 mod utils;

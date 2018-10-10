@@ -12,7 +12,7 @@ license = "AGPL-3.0-only"
 
 [dependencies]
 rust-lioness = "^0.1.4"
-sodiumoxide = "0.0.16"
+ecdh_wrapper = "0.0.1"
 arrayref = "^0.3.4"
 subtle = "0.6.0"
 byteorder = "1.2.2"

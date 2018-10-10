@@ -20,8 +20,7 @@ extern crate rand;
 
 use subtle::ConstantTimeEq;
 use self::rand::Rng;
-
-use super::ecdh::{PublicKey, PrivateKey, exp};
+use ecdh_wrapper::{PublicKey, PrivateKey, exp};
 
 use super::utils::xor_assign;
 use super::constants::{NODE_ID_SIZE, HEADER_SIZE, MAX_HOPS, ROUTING_INFO_SIZE, PER_HOP_ROUTING_INFO_SIZE,

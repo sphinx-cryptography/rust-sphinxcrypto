@@ -23,8 +23,7 @@ extern crate tiny_keccak;
 extern crate blake2b;
 
 use self::rust_lioness::{LionessError, encrypt, decrypt, RAW_KEY_SIZE, IV_SIZE};
-
-use super::ecdh::KEY_SIZE;
+use ecdh_wrapper::KEY_SIZE;
 
 use self::chacha::ChaCha as ChaCha20;
 use self::keystream::KeyStream;

@@ -3,15 +3,15 @@
 
 extern crate rand;
 extern crate sphinxcrypto;
+extern crate ecdh_wrapper;
 //extern crate rustc_serialize;
 
 //use self::rustc_serialize::hex::ToHex;
 use self::rand::Rng;
 use self::rand::os::OsRng;
-
+use ecdh_wrapper::PrivateKey;
 
 use sphinxcrypto::server::sphinx_packet_unwrap;
-use sphinxcrypto::ecdh::PrivateKey;
 use sphinxcrypto::client::{new_packet, PathHop, new_surb, new_packet_from_surb, decrypt_surb_payload};
 use sphinxcrypto::constants::{MAX_HOPS, NODE_ID_SIZE, FORWARD_PAYLOAD_SIZE, RECIPIENT_ID_SIZE, SURB_ID_SIZE, PAYLOAD_SIZE};
 use sphinxcrypto::commands::{RoutingCommand};
