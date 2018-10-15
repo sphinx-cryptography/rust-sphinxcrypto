@@ -75,11 +75,7 @@ pub fn create_header<R: Rng>(rng: &mut R, path: Vec<PathHop>) -> Result<([u8; HE
     }
 
     // Derive the key material for each hop.
-    let _keypair_result = PrivateKey::generate(rng);
-    if _keypair_result.is_err() {
-        return Err(SphinxHeaderCreateError::KeyGenFail);
-    }
-    let keypair = _keypair_result.unwrap();
+    let keypair = PrivateKey::generate(rng);
     let mut group_elements: Vec<PublicKey> = vec![];
     let mut keys: Vec<PacketKeys> = vec![];
     let mut shared_secret: [u8; GROUP_ELEMENT_SIZE] = keypair.exp(&path[0].public_key);
