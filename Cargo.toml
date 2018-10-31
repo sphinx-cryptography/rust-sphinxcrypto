@@ -16,10 +16,11 @@ ecdh_wrapper = "0.0.5"
 arrayref = "^0.3.5"
 byteorder = "1.2.6"
 rand = "^0.4.2"
-tiny-keccak = "1.4.2"
+hkdf = "0.7.0"
 keystream = "^1.0.0"
 chacha = "^0.2.0"
 blake2b = "0.7.0"
+sha2 = "0.8.0"
 
 [dependencies.subtle]
 version = "1"
