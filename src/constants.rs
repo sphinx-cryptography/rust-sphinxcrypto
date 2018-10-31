@@ -25,7 +25,7 @@ pub const MAX_HOPS: usize = 5;
 
 /// The length of the usable forward payload
 /// of a Sphinx packet in bytes.
-pub const FORWARD_PAYLOAD_SIZE: usize = 2 * 1024;
+pub const FORWARD_PAYLOAD_SIZE: usize = 50 * 1024;
 
 /// The node identifier size in bytes.
 pub const NODE_ID_SIZE: usize = 32;
