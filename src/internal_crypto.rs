@@ -18,18 +18,19 @@
 
 extern crate chacha;
 extern crate keystream;
-extern crate tiny_keccak;
+extern crate hkdf;
 extern crate blake2b;
 extern crate aez;
+extern crate sha2;
 
-//use self::rust_lioness::{LionessError, encrypt, decrypt, RAW_KEY_SIZE, IV_SIZE};
+use self::sha2::Sha256;
 use self::aez::aez::{encrypt, decrypt, AEZ_KEY_SIZE, AEZ_NONCE_SIZE};
 use ecdh_wrapper::KEY_SIZE;
 
 use self::chacha::ChaCha as ChaCha20;
 use self::keystream::KeyStream;
 use self::blake2b::{blake2b, blake2b_keyed};
-use self::tiny_keccak::Keccak;
+use self::hkdf::Hkdf;
 
 
 /// the output size of the unkeyed hash in bytes
@@ -57,6 +58,10 @@ pub const SPRP_IV_SIZE: usize = AEZ_NONCE_SIZE;
 pub const GROUP_ELEMENT_SIZE: usize = KEY_SIZE;
 
 const KDF_OUTPUT_SIZE: usize = MAC_KEY_SIZE + STREAM_KEY_SIZE + STREAM_IV_SIZE + SPRP_KEY_SIZE + SPRP_IV_SIZE + KEY_SIZE;
+
+const KDF_INFO_STR: &str = "panoramix-kdf-v0-hkdf-sha256";
+
+
 
 /// stream cipher for sphinx crypto usage
 pub struct StreamCipher {
@@ -97,11 +102,10 @@ pub struct PacketKeys {
 
 /// kdf takes the input key material and returns the Sphinx Packet keys.
 pub fn kdf(input: &[u8; KEY_SIZE]) -> PacketKeys {
-    let mut shake = Keccak::new_shake256();
-    shake.update(input);
-    let mut xof = shake.xof();
     let mut output = [0u8; KDF_OUTPUT_SIZE];
-    xof.squeeze(&mut output);
+    let hk = Hkdf::<Sha256>::extract(None, &input[..]);
+
+    hk.expand(String::from(KDF_INFO_STR).into_bytes().as_slice(), &mut output).unwrap();
     let (a1,a2,a3,a4,a5,a6) = array_refs![&output,MAC_KEY_SIZE,STREAM_KEY_SIZE,STREAM_IV_SIZE,SPRP_KEY_SIZE,SPRP_IV_SIZE,KEY_SIZE];
     PacketKeys{
         header_mac: *a1,
