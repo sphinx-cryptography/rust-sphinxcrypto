@@ -35,7 +35,7 @@ The currently implemented Sphinx cryptographic parameterization is:
 * MAC(K, M), H(M) - Blake2b
 * S(K, IV) - Chacha20
 * KDF(SALT, IKM) - SHAKE256
-* SPRP_Encrypt(K, M)/SPRP_Decrypt(K, M) - Lioness composed with: Blake2b and Chacha20.
+* SPRP_Encrypt(K, M)/SPRP_Decrypt(K, M) - AEZ
 
 The Sphinx packet geometry is parameterized in the **constants** submodule.
 
@@ -45,7 +45,7 @@ The Sphinx packet geometry is parameterized in the **constants** submodule.
 To import `sphinxcrypto`, add the following to the dependencies section of
 your project's `Cargo.toml`:
 ```toml
-sphinxcrypto = "^0.0.10"
+sphinxcrypto = "^0.0.11"
 ```
 Then import the crate as:
 ```rust,no_run
