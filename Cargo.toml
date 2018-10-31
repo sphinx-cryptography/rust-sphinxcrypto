@@ -1,6 +1,6 @@
 [package]
 name = "sphinxcrypto"
-version = "0.0.11"
+version = "0.0.12"
 authors = ["David Stainton <dstainton415@gmail.com>"]
 description = "Sphinx cryptographic packet format library"
 homepage = "https://github.com/applied-mixnetworks/rust-sphinxcrypto"
@@ -11,7 +11,7 @@ keywords = ["cryptography", "sphinx", "mixnet", "crypto", "mix"]
 license = "AGPL-3.0-only"
 
 [dependencies]
-aez = "0.0.1"
+aez = "0.0.2"
 ecdh_wrapper = "0.0.5"
 arrayref = "^0.3.5"
 byteorder = "1.2.6"
