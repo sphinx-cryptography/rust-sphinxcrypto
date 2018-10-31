@@ -16,13 +16,14 @@
 
 //! Sphinx crypto primitives
 
-extern crate rust_lioness;
 extern crate chacha;
 extern crate keystream;
 extern crate tiny_keccak;
 extern crate blake2b;
+extern crate aez;
 
-use self::rust_lioness::{LionessError, encrypt, decrypt, RAW_KEY_SIZE, IV_SIZE};
+//use self::rust_lioness::{LionessError, encrypt, decrypt, RAW_KEY_SIZE, IV_SIZE};
+use self::aez::aez::{encrypt, decrypt, AEZ_KEY_SIZE, AEZ_NONCE_SIZE};
 use ecdh_wrapper::KEY_SIZE;
 
 use self::chacha::ChaCha as ChaCha20;
@@ -47,10 +48,10 @@ pub const STREAM_KEY_SIZE: usize = 32;
 pub const STREAM_IV_SIZE: usize = 12;
 
 /// the key size of the SPRP in bytes.
-pub const SPRP_KEY_SIZE: usize = RAW_KEY_SIZE;
+pub const SPRP_KEY_SIZE: usize = AEZ_KEY_SIZE;
 
 /// the IV size of the SPRP in bytes.
-pub const SPRP_IV_SIZE: usize = IV_SIZE;
+pub const SPRP_IV_SIZE: usize = AEZ_NONCE_SIZE;
 
 /// the size of the DH group element in bytes.
 pub const GROUP_ELEMENT_SIZE: usize = KEY_SIZE;
@@ -130,16 +131,14 @@ pub fn hmac(key: &[u8; MAC_KEY_SIZE], data: &[u8]) -> [u8; MAC_SIZE] {
 
 /// returns the plaintext of the message msg, decrypted via the
 /// Sphinx SPRP with a given key and IV.
-pub fn sprp_decrypt(key: &[u8; SPRP_KEY_SIZE], iv: &[u8; SPRP_IV_SIZE], msg: Vec<u8>) -> Result<Vec<u8>, LionessError> {
-    let mut output: Vec<u8> = vec![0u8; msg.len()];
-    decrypt(key, iv, &mut output, &msg)?;
-    Ok(output)
+pub fn sprp_decrypt(key: &[u8; SPRP_KEY_SIZE], iv: &[u8; SPRP_IV_SIZE], msg: Vec<u8>) -> Vec<u8> {
+    let output = decrypt(key, iv, &msg);
+    output
 }
 
 /// returns the ciphertext of the message msg, encrypted via the
 /// Sphinx SPRP with a given key and IV.
-pub fn sprp_encrypt(key: &[u8; SPRP_KEY_SIZE], iv: &[u8; SPRP_IV_SIZE], msg: Vec<u8>) -> Result<Vec<u8>, LionessError> {
-    let mut output: Vec<u8> = vec![0u8; msg.len()];
-    encrypt(key, iv, &mut output, &msg)?;
-    Ok(output)
+pub fn sprp_encrypt(key: &[u8; SPRP_KEY_SIZE], iv: &[u8; SPRP_IV_SIZE], msg: Vec<u8>) -> Vec<u8> {
+    let output = encrypt(key, iv, &msg);
+    output
 }

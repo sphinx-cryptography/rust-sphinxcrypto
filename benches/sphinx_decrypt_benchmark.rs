@@ -119,7 +119,6 @@ fn criterion_sphinx_unwrap_benchmark(c: &mut Criterion) {
 
     let nodes = _tuple.0;
     let path = _tuple.1;
-    let path_c = path.clone();
 
     let packet = new_packet(&mut r, path, payload).unwrap();
 

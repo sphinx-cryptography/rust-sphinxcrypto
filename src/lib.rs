@@ -40,7 +40,7 @@
 extern crate arrayref;
 extern crate ecdh_wrapper;
 extern crate byteorder;
-extern crate rust_lioness;
+extern crate aez;
 extern crate subtle;
 extern crate keystream;
 extern crate chacha;

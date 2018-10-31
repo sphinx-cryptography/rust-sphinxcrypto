@@ -221,11 +221,7 @@ pub fn new_packet<R: Rng>(rng: &mut R, path: Vec<PathHop>, payload: [u8; FORWARD
 
     // encrypt tagged payload with SPRP
     while i >= 0 {
-        let _result = sprp_encrypt(&sprp_keys[i as usize].key, &sprp_keys[i as usize].iv, _payload.clone());
-        if _result.is_err() {
-            return Err(SphinxPacketCreateError::SPRPEncryptError);
-        }
-        _payload = _result.unwrap();
+        _payload = sprp_encrypt(&sprp_keys[i as usize].key, &sprp_keys[i as usize].iv, _payload.clone());
         i -= 1;
     }
 
@@ -308,11 +304,8 @@ pub fn new_packet_from_surb(surb: [u8; SURB_SIZE], payload: [u8; FORWARD_PAYLOAD
     // Encrypt the payload.
     let mut crypt_payload = [0u8; PAYLOAD_SIZE];
     crypt_payload[PAYLOAD_TAG_SIZE..].copy_from_slice(&payload[..]);
-    let _result = sprp_encrypt(key, iv, crypt_payload[..].to_vec());
-    if _result.is_err() {
-        return Err(SphinxPacketFromSurbError::ImpossibleError);
-    }
-    packet[HEADER_SIZE..].copy_from_slice(_result.unwrap().as_slice());
+    let ciphertext = sprp_encrypt(key, iv, crypt_payload[..].to_vec());
+    packet[HEADER_SIZE..].copy_from_slice(ciphertext.as_slice());
     return Ok((packet, *id));
 }
 
@@ -346,18 +339,10 @@ pub fn decrypt_surb_payload(payload: [u8; PAYLOAD_SIZE], keys: Vec<u8>) -> Resul
         sprp_iv.copy_from_slice(&k[SPRP_KEY_SIZE..SPRP_KEY_SIZE+SPRP_IV_SIZE]);
         k = &k[SPRP_KEY_SIZE+SPRP_IV_SIZE..];
         if i == num_hops - 1 {
-            let _result = sprp_decrypt(&sprp_key, &sprp_iv, b.to_vec());
-            if _result.is_err() {
-                return Err(SphinxDecryptSurbError::DecryptError);
-            }
-            b = _result.unwrap();
+            b = sprp_decrypt(&sprp_key, &sprp_iv, b.to_vec());
         } else {
 	    // Undo one *decrypt* operation done by the Unwrap.
-            let _result = sprp_encrypt(&sprp_key, &sprp_iv, b.to_vec());
-            if _result.is_err() {
-                return Err(SphinxDecryptSurbError::DecryptError);
-            }
-            b = _result.unwrap();
+            b = sprp_encrypt(&sprp_key, &sprp_iv, b.to_vec());
         }
         i += 1;
     }
