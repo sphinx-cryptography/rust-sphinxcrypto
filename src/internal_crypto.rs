@@ -131,9 +131,9 @@ pub fn hmac(key: &[u8; MAC_KEY_SIZE], data: &[u8]) -> [u8; MAC_SIZE] {
 
 /// returns the plaintext of the message msg, decrypted via the
 /// Sphinx SPRP with a given key and IV.
-pub fn sprp_decrypt(key: &[u8; SPRP_KEY_SIZE], iv: &[u8; SPRP_IV_SIZE], msg: Vec<u8>) -> Vec<u8> {
-    let output = decrypt(key, iv, &msg);
-    output
+pub fn sprp_decrypt(key: &[u8; SPRP_KEY_SIZE], iv: &[u8; SPRP_IV_SIZE], msg: Vec<u8>) -> Result<Vec<u8>, aez::error::AezDecryptionError> {
+    let output = decrypt(key, iv, &msg)?;
+    Ok(output)
 }
 
 /// returns the ciphertext of the message msg, encrypted via the

@@ -123,7 +123,13 @@ pub fn sphinx_packet_unwrap(private_key: &PrivateKey, packet: &mut [u8; PACKET_S
     // Decrypt the Sphinx Packet Payload.
     let mut p = vec![0u8; payload.len()];
     p.copy_from_slice(&payload[..]);
-    let decrypted_payload = sprp_decrypt(&keys.payload_encryption, &keys.payload_encryption_iv, payload.to_vec());
+    let decrypted_payload = match sprp_decrypt(&keys.payload_encryption, &keys.payload_encryption_iv, payload.to_vec())
+    {
+        Ok(x) => x,
+        Err(_) => {
+            return (None, Some(replay_tag), Some(cmds), Some(SphinxUnwrapError::PayloadDecryptError))
+        }
+    };
 
     // Transform the packet for forwarding to the next mix, iff the
     // routing commands vector included a Next Hop Command.

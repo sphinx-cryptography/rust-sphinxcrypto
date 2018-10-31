@@ -339,7 +339,12 @@ pub fn decrypt_surb_payload(payload: [u8; PAYLOAD_SIZE], keys: Vec<u8>) -> Resul
         sprp_iv.copy_from_slice(&k[SPRP_KEY_SIZE..SPRP_KEY_SIZE+SPRP_IV_SIZE]);
         k = &k[SPRP_KEY_SIZE+SPRP_IV_SIZE..];
         if i == num_hops - 1 {
-            b = sprp_decrypt(&sprp_key, &sprp_iv, b.to_vec());
+            b = match sprp_decrypt(&sprp_key, &sprp_iv, b.to_vec()) {
+                Ok(x) => x,
+                Err(_) => {
+                    return Err(SphinxDecryptSurbError::DecryptError);
+                },
+            }
         } else {
 	    // Undo one *decrypt* operation done by the Unwrap.
             b = sprp_encrypt(&sprp_key, &sprp_iv, b.to_vec());
