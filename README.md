@@ -34,7 +34,7 @@ The currently implemented Sphinx cryptographic parameterization is:
 * EXP(X, Y) - X25519
 * MAC(K, M), H(M) - Blake2b
 * S(K, IV) - Chacha20
-* KDF(SALT, IKM) - SHAKE256
+* KDF(SALT, IKM) - HKDF Sha256
 * SPRP_Encrypt(K, M)/SPRP_Decrypt(K, M) - AEZ
 
 The Sphinx packet geometry is parameterized in the **constants** submodule.
@@ -58,11 +58,6 @@ extern crate sphinxcrypto;
 This library is a Rust language port of Yawning's Katzenpost Sphinx implementation:
 
 https://github.com/katzenpost/core/tree/master/sphinx
-
-These will NOT be binary compatible unless using the exact same cipher
-suite. I don't have an AEZ cipher implementation written in Rust
-handy so I will keep using Lioness for the time being. If someone
-cares about performance then please let me know.
 
 Thanks to Jeff Burdges for helping me with some of my rust problems.
 
