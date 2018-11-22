@@ -16,9 +16,11 @@
 
 //! The Sphinx packet geometry is parameterization.
 
-use super::internal_crypto::{GROUP_ELEMENT_SIZE, MAC_SIZE, SPRP_KEY_SIZE, SPRP_IV_SIZE};
+use super::internal_crypto::{GROUP_ELEMENT_SIZE, MAC_SIZE, SPRP_KEY_SIZE, SPRP_IV_SIZE, HASH_SIZE};
 use super::commands::{RECIPIENT_SIZE, SURB_REPLY_SIZE};
 
+/// The size in bytes of the Sphinx packet replay tags.
+pub const SPHINX_REPLAY_TAG_SIZE: usize = HASH_SIZE;
 
 /// The maximum number of hops a packet will traverse.
 pub const MAX_HOPS: usize = 5;

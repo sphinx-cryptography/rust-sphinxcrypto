@@ -12,8 +12,8 @@ Sphinx has the following features:
 * Single Use Reply Blocks
 * per hop bitwise unlinkability
 * indistinguishable replies
-* hidden the path length
-* hidden the relay position
+* hidden path length
+* hidden relay position
 * tagging attack detection
 * reply attack detection
 
@@ -45,7 +45,7 @@ The Sphinx packet geometry is parameterized in the **constants** submodule.
 To import `sphinxcrypto`, add the following to the dependencies section of
 your project's `Cargo.toml`:
 ```toml
-sphinxcrypto = "^0.0.13"
+sphinxcrypto = "^0.0.14"
 ```
 Then import the crate as:
 ```rust,no_run
