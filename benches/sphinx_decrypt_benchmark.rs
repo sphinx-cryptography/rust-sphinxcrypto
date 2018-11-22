@@ -44,7 +44,7 @@ fn os_rng() -> OsRng {
 fn new_node<R: Rng>(rng: &mut R) -> NodeParams {
     let mut id = [0u8; NODE_ID_SIZE];
     rng.fill_bytes(&mut id);
-    let keypair = PrivateKey::generate(rng);
+    let keypair = PrivateKey::generate(rng).unwrap();
     return NodeParams{
         id: id,
         private_key: keypair,
