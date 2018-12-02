@@ -26,10 +26,9 @@ use self::rand::os::OsRng;
 use ecdh_wrapper::PrivateKey;
 
 use sphinxcrypto::server::sphinx_packet_unwrap;
-use sphinxcrypto::client::{new_packet, PathHop, new_surb, new_packet_from_surb, decrypt_surb_payload};
-use sphinxcrypto::constants::{MAX_HOPS, NODE_ID_SIZE, FORWARD_PAYLOAD_SIZE, RECIPIENT_ID_SIZE, SURB_ID_SIZE, PAYLOAD_SIZE};
-use sphinxcrypto::commands::{RoutingCommand};
-
+use sphinxcrypto::client::{new_packet, PathHop};
+use sphinxcrypto::constants::{MAX_HOPS, NODE_ID_SIZE, FORWARD_PAYLOAD_SIZE, RECIPIENT_ID_SIZE, SURB_ID_SIZE};
+use sphinxcrypto::commands::{RoutingCommand, Delay, SURBReply, Recipient};
 
 
 struct NodeParams {
@@ -69,25 +68,31 @@ fn new_path_vector<R: Rng>(rng: &mut R, num_hops: u8, is_surb: bool) -> (Vec<Nod
         let mut commands: Vec<RoutingCommand> = vec![];
         if i < num_hops - 1 {
             // Non-terminal hop, add the delay.
-            let delay = RoutingCommand::Delay {
-                delay: DELAY_BASE * (i as u32 + 1),
-            };
+            let delay = RoutingCommand::Delay(
+                Delay{
+                    delay: DELAY_BASE * (i as u32 + 1),
+                }
+            );
             commands.push(delay);
         } else {
 	    // Terminal hop, add the recipient.
             let mut rcpt_id = [0u8; RECIPIENT_ID_SIZE];
             rng.fill_bytes(&mut rcpt_id);
-            let rcpt = RoutingCommand::Recipient {
-                id: rcpt_id,
-            };
+            let rcpt = RoutingCommand::Recipient(
+                Recipient{
+                    id: rcpt_id,
+                }
+            );
             commands.push(rcpt);
 
             if is_surb {
                 let mut surb_id = [0u8; SURB_ID_SIZE];
                 rng.fill_bytes(&mut surb_id);
-                let surb_reply = RoutingCommand::SURBReply {
-                    id: surb_id,
-                };
+                let surb_reply = RoutingCommand::SURBReply(
+                    SURBReply{
+                        id: surb_id,
+                    }
+                );
                 commands.push(surb_reply);
             }
         }
