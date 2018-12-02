@@ -142,16 +142,14 @@ pub fn sphinx_packet_unwrap(private_key: &PrivateKey, packet: &mut [u8; PACKET_S
         routing_info.copy_from_slice(new_routing_info);
         let next_hop = maybe_next_hop.unwrap();
         match next_hop {
-            RoutingCommand::NextHop{
-                id: _, mac
-            } => {
-                _mac.copy_from_slice(&mac);
+            RoutingCommand::NextHop(next_hop_cmd) => {
+                _mac.copy_from_slice(&next_hop_cmd.mac);
+                final_cmds.push(RoutingCommand::NextHop(next_hop_cmd));
             },
-            _ => {},  // not reached
+            _ => unreachable!(),
         }
         payload.copy_from_slice(&decrypted_payload);
         final_payload = None;
-        final_cmds.push(next_hop);
     } else {
         // Validate the payload tag, iff this is not a SURB reply.
         if !maybe_surb_reply.is_some() {

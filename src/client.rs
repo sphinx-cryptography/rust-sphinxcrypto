@@ -27,7 +27,7 @@ use super::constants::{NODE_ID_SIZE, HEADER_SIZE, MAX_HOPS, ROUTING_INFO_SIZE, P
                        V0_AD, FORWARD_PAYLOAD_SIZE, PACKET_SIZE, PAYLOAD_TAG_SIZE, SURB_SIZE, PAYLOAD_SIZE};
 use super::internal_crypto::{SPRP_KEY_SIZE, SPRP_IV_SIZE, GROUP_ELEMENT_SIZE, PacketKeys, kdf,
                              StreamCipher, MAC_SIZE, hmac, sprp_encrypt, sprp_decrypt};
-use super::commands::{RoutingCommand, commands_to_vec};
+use super::commands::{RoutingCommand, commands_to_vec, NextHop};
 use super::error::{SphinxHeaderCreateError, SphinxPacketCreateError, SphinxSurbCreateError,
                    SphinxPacketFromSurbError, SphinxDecryptSurbError};
 
@@ -139,10 +139,12 @@ pub fn create_header<R: Rng>(rng: &mut R, path: Vec<PathHop>) -> Result<([u8; HE
         if !_is_terminal {
             let _next_id = path[i as usize + 1].id.clone();
             let _next_mac = mac.clone();
-            let _next_cmd = RoutingCommand::NextHop{
-                id: _next_id,
-                mac: _next_mac,
-            };
+            let _next_cmd = RoutingCommand::NextHop(
+                NextHop {
+                    id: _next_id,
+                    mac: _next_mac,
+                },
+            );
             _ri_fragment.extend(_next_cmd.to_vec());
         }
 

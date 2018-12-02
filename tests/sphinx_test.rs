@@ -14,7 +14,7 @@ use ecdh_wrapper::PrivateKey;
 use sphinxcrypto::server::sphinx_packet_unwrap;
 use sphinxcrypto::client::{new_packet, PathHop, new_surb, new_packet_from_surb, decrypt_surb_payload};
 use sphinxcrypto::constants::{MAX_HOPS, NODE_ID_SIZE, FORWARD_PAYLOAD_SIZE, RECIPIENT_ID_SIZE, SURB_ID_SIZE, PAYLOAD_SIZE};
-use sphinxcrypto::commands::{RoutingCommand};
+use sphinxcrypto::commands::{RoutingCommand, Delay, SURBReply, Recipient};
 
 
 struct NodeParams {
@@ -54,25 +54,31 @@ fn new_path_vector<R: Rng>(rng: &mut R, num_hops: u8, is_surb: bool) -> (Vec<Nod
         let mut commands: Vec<RoutingCommand> = vec![];
         if i < num_hops - 1 {
             // Non-terminal hop, add the delay.
-            let delay = RoutingCommand::Delay {
-                delay: DELAY_BASE * (i as u32 + 1),
-            };
+            let delay = RoutingCommand::Delay(
+                Delay{
+                    delay: DELAY_BASE * (i as u32 + 1),
+                }
+            );
             commands.push(delay);
         } else {
 	    // Terminal hop, add the recipient.
             let mut rcpt_id = [0u8; RECIPIENT_ID_SIZE];
             rng.fill_bytes(&mut rcpt_id);
-            let rcpt = RoutingCommand::Recipient {
-                id: rcpt_id,
-            };
+            let rcpt = RoutingCommand::Recipient(
+                Recipient{
+                    id: rcpt_id,
+                }
+            );
             commands.push(rcpt);
 
             if is_surb {
                 let mut surb_id = [0u8; SURB_ID_SIZE];
                 rng.fill_bytes(&mut surb_id);
-                let surb_reply = RoutingCommand::SURBReply {
-                    id: surb_id,
-                };
+                let surb_reply = RoutingCommand::SURBReply(
+                    SURBReply{
+                        id: surb_id,
+                    }
+                );
                 commands.push(surb_reply);
             }
         }
@@ -129,11 +135,11 @@ privacy, but electronic technologies do.");
                 assert_eq!(final_payload.unwrap().as_slice(), &payload[..]);
                 let hop = path_c[i].to_owned().commands;
                 match &hop.unwrap()[0] {
-                    RoutingCommand::Recipient{ id } => {
-                        let _id = id;
+                    RoutingCommand::Recipient(recipient) => {
+                        let _id = recipient.id;
                         match cmds[0] {
-                            RoutingCommand::Recipient{ id } => {
-                                assert_eq!(id[..], _id[..]);
+                            RoutingCommand::Recipient(ref recipient_cmd) => {
+                                assert_eq!(recipient_cmd.id[..], _id[..]);
                             },
                             _ => panic!("wtf"),
                         }
@@ -146,13 +152,11 @@ privacy, but electronic technologies do.");
                 let _delay;
                 let hop = path_c[i].to_owned().commands;
                 match &hop.unwrap()[0] {
-                    RoutingCommand::Delay{ delay } => {
-                        _delay = delay;
+                    RoutingCommand::Delay(delay) => {
+                        _delay = delay.delay;
                         match cmds[0] {
-                            RoutingCommand::Delay {
-                                delay
-                            } => {
-                                assert_eq!(delay, *_delay);
+                            RoutingCommand::Delay(ref delay_cmd) => {
+                                assert_eq!(delay_cmd.delay, _delay);
                             }
                             _ => panic!("wtf"),
                         }
@@ -200,12 +204,12 @@ hurried on, Alice started to her feet.");
             assert!(cmds.len() == 2);
             if i == nodes.len() - 1 {
                 match cmds[0] {
-                    RoutingCommand::Recipient { id } => {
-                        let _id = id;
+                    RoutingCommand::Recipient(ref recipient) => {
+                        let _id = recipient.id;
                         let hop = path_c[i].to_owned().commands;
                         match &hop.unwrap()[0] {
-                            RoutingCommand::Recipient { id } => {
-                                assert_eq!(_id[..], id[..]);
+                            RoutingCommand::Recipient(ref recipient_cmd) => {
+                                assert_eq!(_id[..], recipient_cmd.id[..]);
                             },
                             _ => panic!("wtf"),
                         }

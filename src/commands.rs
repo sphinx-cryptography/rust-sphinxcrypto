@@ -42,6 +42,68 @@ const SURB_REPLY_CMD: u8 = 0x03;
 /// Implementation defined commands.
 const DELAY_CMD: u8 = 0x80;
 
+
+#[derive(Clone)]
+pub struct NextHop {
+    pub id: [u8; NODE_ID_SIZE],
+    pub mac: [u8; MAC_SIZE],
+}
+
+impl NextHop {
+    pub fn to_vec(&self) -> Vec<u8> {
+        let mut out = Vec::new();
+        out.push(NEXT_HOP_CMD);
+        out.extend_from_slice(&self.id);
+        out.extend_from_slice(&self.mac);
+        return out;
+    }
+}
+
+#[derive(Clone)]
+pub struct Recipient {
+    pub id: [u8; RECIPIENT_ID_SIZE],
+}
+
+impl Recipient {
+    pub fn to_vec(&self) -> Vec<u8> {
+        let mut out = Vec::new();
+        out.push(RECIPIENT_CMD);
+        out.extend_from_slice(&self.id);
+        return out;
+    }
+}
+
+#[derive(Clone)]
+pub struct SURBReply {
+    pub id: [u8; SURB_ID_SIZE],
+}
+
+impl SURBReply {
+    pub fn to_vec(&self) -> Vec<u8> {
+        let mut out = Vec::new();
+        out.push(SURB_REPLY_CMD);
+        out.extend_from_slice(&self.id);
+        return out;
+    }
+}
+
+#[derive(Clone)]
+pub struct Delay {
+    pub delay: u32,
+}
+
+impl Delay {
+    pub fn to_vec(&self) -> Vec<u8> {
+        let mut out = Vec::new();
+        out.push(DELAY_CMD);
+        let mut _delay = [0; 4];
+        BigEndian::write_u32(&mut _delay, self.delay);
+        out.extend_from_slice(&_delay);
+        return out;
+    }
+}
+
+
 /// Sphinx routing commands are decrypted by each mix in the route.
 /// The Poisson mix strategy uses the Delay command, other mix
 /// strategies may need to add additional commands.
@@ -49,28 +111,19 @@ const DELAY_CMD: u8 = 0x80;
 pub enum RoutingCommand {
     /// The next hop command is used to route
     /// the Sphinx packet onto the next hop.
-    NextHop {
-        id: [u8; NODE_ID_SIZE],
-        mac: [u8; MAC_SIZE],
-    },
+    NextHop(NextHop),
 
     /// The recipient command is used to deliver a payload
     /// to the specified message queue.
-    Recipient {
-        id: [u8; RECIPIENT_ID_SIZE],
-    },
+    Recipient(Recipient),
 
     /// SURBReply is used by a SURB reply on it's last hop.
-    SURBReply {
-        id: [u8; SURB_ID_SIZE],
-    },
+    SURBReply(SURBReply),
 
     /// The Delay command is used by for the Poisson mix strategy
     /// where clients compose the Sphinx packet with the
     /// per hop delay of their choosing.
-    Delay {
-        delay: u32,
-    },
+    Delay(Delay),
 }
 
 impl RoutingCommand {
@@ -109,42 +162,11 @@ impl RoutingCommand {
 
     /// to_vec returns a vector of serialized commands
     pub fn to_vec(&self) -> Vec<u8> {
-        match *self {
-            RoutingCommand::NextHop{
-                id, mac
-            } => {
-                let mut out = Vec::new();
-                out.push(NEXT_HOP_CMD);
-                out.extend_from_slice(&id);
-                out.extend_from_slice(&mac);
-                return out;
-            },
-            RoutingCommand::Recipient{
-                id
-            } => {
-                let mut out = Vec::new();
-                out.push(RECIPIENT_CMD);
-                out.extend_from_slice(&id);
-                return out;
-            },
-            RoutingCommand::SURBReply{
-                id
-            } => {
-                let mut out = Vec::new();
-                out.push(SURB_REPLY_CMD);
-                out.extend_from_slice(&id);
-                return out;
-            },
-            RoutingCommand::Delay{
-                delay
-            } => {
-                let mut out = Vec::new();
-                out.push(DELAY_CMD);
-                let mut _delay = [0; 4];
-                BigEndian::write_u32(&mut _delay, delay);
-                out.extend_from_slice(&_delay);
-                return out;
-            },
+        match self {
+            RoutingCommand::NextHop(ref next_hop) => next_hop.to_vec(),
+            RoutingCommand::Recipient(ref recipient) => recipient.to_vec(),
+            RoutingCommand::SURBReply(ref surb_reply) => surb_reply.to_vec(),
+            RoutingCommand::Delay(ref delay) => delay.to_vec(),
         }
     }
 }
@@ -157,10 +179,12 @@ fn next_hop_from_bytes(b: &[u8]) -> Result<(RoutingCommand, Vec<u8>), &'static s
     id.copy_from_slice(&b[..NODE_ID_SIZE]);
     let mut mac = [0u8; MAC_SIZE];
     mac.clone_from_slice(&b[NODE_ID_SIZE..NODE_ID_SIZE+MAC_SIZE]);
-    let cmd = RoutingCommand::NextHop{
-        id: id,
-        mac: mac,
-    };
+    let cmd = RoutingCommand::NextHop(
+        NextHop {
+            id: id,
+            mac: mac,
+        }
+    );
     return Ok((cmd, b[NEXT_HOP_SIZE-1..].to_vec()))
 }
 
@@ -170,9 +194,11 @@ fn recipient_from_bytes(b: &[u8]) -> Result<(RoutingCommand, Vec<u8>), &'static 
     }
     let mut id = [0u8; RECIPIENT_ID_SIZE];
     id.copy_from_slice(&b[..RECIPIENT_ID_SIZE]);
-    let cmd = RoutingCommand::Recipient{
-        id: id,
-    };
+    let cmd = RoutingCommand::Recipient(
+        Recipient{
+            id: id,
+        }
+    );
     return Ok((cmd, b[RECIPIENT_SIZE-1..].to_vec()))
 }
 
@@ -182,9 +208,11 @@ fn surb_reply_from_bytes(b: &[u8]) -> Result<(RoutingCommand, Vec<u8>), &'static
     }
     let mut id = [0u8; SURB_ID_SIZE];
     id.copy_from_slice(&b[..SURB_ID_SIZE]);
-    let cmd = RoutingCommand::SURBReply{
-        id: id,
-    };
+    let cmd = RoutingCommand::SURBReply(
+        SURBReply{
+            id: id,
+        }
+    );
     return Ok((cmd, b[SURB_REPLY_SIZE-1..].to_vec()))
 }
 
@@ -192,9 +220,11 @@ fn delay_from_bytes(b: &[u8]) -> Result<(RoutingCommand, Vec<u8>), &'static str>
     if b.len() < DELAY_SIZE-1 {
         return Err("invalid command error")
     }
-    let cmd = RoutingCommand::Delay{
-        delay: BigEndian::read_u32(b),
-    };
+    let cmd = RoutingCommand::Delay(
+        Delay{
+            delay: BigEndian::read_u32(b),
+        }
+    );
     return Ok((cmd, b[DELAY_SIZE-1..].to_vec()))
 }
 
@@ -236,25 +266,17 @@ pub fn parse_routing_commands(b: &[u8]) -> Result<(Vec<RoutingCommand>, Option<R
         b_copy = _rest;
         let cmd = _cmd.unwrap();
         match cmd {
-            RoutingCommand::NextHop{
-                id: _, mac: _
-            } => {
-                maybe_next_hop = Some(cmd);
+            RoutingCommand::NextHop(next_hop) => {
+                maybe_next_hop = Some(RoutingCommand::NextHop(next_hop));
             },
-            RoutingCommand::SURBReply{
-                id: _,
-            } => {
-                maybe_surb_reply = Some(cmd);
+            RoutingCommand::SURBReply(surb_reply) => {
+                maybe_surb_reply = Some(RoutingCommand::SURBReply(surb_reply));
             },
-            RoutingCommand::Recipient{
-                id: _,
-            } => {
-                ret.push(cmd);
+            RoutingCommand::Recipient(recipient) => {
+                ret.push(RoutingCommand::Recipient(recipient));
             },
-            RoutingCommand::Delay{
-                delay: _,
-            } => {
-                ret.push(cmd);
+            RoutingCommand::Delay(delay) => {
+                ret.push(RoutingCommand::Delay(delay));
             },
         }
     }
@@ -283,19 +305,19 @@ mod tests {
         rng.fill_bytes(&mut _id);
         let mut _mac = [0u8; MAC_SIZE];
         rng.fill_bytes(&mut _mac);
-        let cmd = RoutingCommand::NextHop{
-            id: _id,
-            mac: _mac,
-        };
+        let cmd = RoutingCommand::NextHop(
+            NextHop{
+                id: _id,
+                mac: _mac,
+            }
+        );
         let raw1 = cmd.to_vec();
         let (maybe_cmd, _) = RoutingCommand::from_bytes(&raw1).unwrap();
         let cmd_p = maybe_cmd.unwrap();
         match cmd_p {
-            RoutingCommand::NextHop{
-                id, mac
-            } => {
-                assert_eq!(id, _id);
-                assert_eq!(mac, _mac);
+            RoutingCommand::NextHop(ref next_hop) => {
+                assert_eq!(next_hop.id, _id);
+                assert_eq!(next_hop.mac, _mac);
             }
             _ => {}
         }
@@ -305,17 +327,17 @@ mod tests {
         // recipient command case
         let mut _id = [0u8; RECIPIENT_ID_SIZE];
         rng.fill_bytes(&mut _id);
-        let cmd = RoutingCommand::Recipient{
-            id: _id,
-        };
+        let cmd = RoutingCommand::Recipient(
+            Recipient{
+                id: _id,
+            }
+        );
         let raw1 = cmd.to_vec();
         let (maybe_cmd, _) = RoutingCommand::from_bytes(&raw1).unwrap();
         let cmd_p = maybe_cmd.unwrap();
         match cmd_p {
-            RoutingCommand::Recipient{
-                id
-            } => {
-                assert_eq!(id[..], _id[..]);
+            RoutingCommand::Recipient(ref recipient) => {
+                assert_eq!(recipient.id[..], _id[..]);
             }
             _ => {}
         }
@@ -325,17 +347,17 @@ mod tests {
         // surb reply command case
         let mut _id = [0u8; SURB_ID_SIZE];
         rng.fill_bytes(&mut _id);
-        let cmd = RoutingCommand::SURBReply{
-            id: _id,
-        };
+        let cmd = RoutingCommand::SURBReply(
+            SURBReply {
+                id: _id,
+            }
+        );
         let raw1 = cmd.to_vec();
         let (maybe_cmd, _) = RoutingCommand::from_bytes(&raw1).unwrap();
         let cmd_p = maybe_cmd.unwrap();
         match cmd_p {
-            RoutingCommand::SURBReply{
-                id
-            } => {
-                assert_eq!(id[..], _id[..]);
+            RoutingCommand::SURBReply(ref surb_reply) => {
+                assert_eq!(surb_reply.id[..], _id[..]);
             }
             _ => {}
         }
@@ -344,17 +366,17 @@ mod tests {
 
         // delay command case
         let _delay = 3;
-        let cmd = RoutingCommand::Delay{
-            delay: _delay,
-        };
+        let cmd = RoutingCommand::Delay(
+            Delay{
+                delay: _delay,
+            }
+        );
         let raw1 = cmd.to_vec();
         let (maybe_cmd, _) = RoutingCommand::from_bytes(&raw1).unwrap();
         let cmd_p = maybe_cmd.unwrap();
         match cmd_p {
-            RoutingCommand::Delay{
-                delay
-            } => {
-                assert_eq!(delay, _delay);
+            RoutingCommand::Delay(ref delay) => {
+                assert_eq!(delay.delay, _delay);
             }
             _ => {}
         }
@@ -368,9 +390,11 @@ mod tests {
 
         // delay command
         let mut rng = OsRng::new().unwrap();
-        let delay = RoutingCommand::Delay{
-            delay: 3,
-        };
+        let delay = RoutingCommand::Delay(
+            Delay{
+                delay: 3,
+            }
+        );
         raw_commands.extend(delay.to_vec());
 
         // next hop command
@@ -378,13 +402,17 @@ mod tests {
         let mut mac = [0u8; MAC_SIZE];
         rng.fill_bytes(&mut id);
         rng.fill_bytes(&mut mac);
-        let next_hop = RoutingCommand::NextHop{
-            id: id,
-            mac: mac,
-        };
-        let delay = RoutingCommand::Delay{
-            delay: 123,
-        };
+        let next_hop = RoutingCommand::NextHop(
+            NextHop{
+                id: id,
+                mac: mac,
+            }
+        );
+        let delay = RoutingCommand::Delay(
+            Delay{
+                delay: 123,
+            }
+        );
         raw_commands.extend(next_hop.to_vec());
         raw_commands.extend(delay.to_vec());
         let _result = parse_routing_commands(&raw_commands);
