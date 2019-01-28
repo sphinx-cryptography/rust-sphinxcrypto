@@ -10,7 +10,7 @@ especially **mix networks.**
 ## sphinx
 
 <img style="float: right; width: auto; height: 415px;"
-  src="https://github.com/applied-mixnetworks/rust-sphinxcrypto/raw/master/pix/dawn_on_the_great_sphinx.jpg"/>
+  src="https://github.com/sphinx-cryptography/rust-sphinxcrypto/raw/master/pix/dawn_on_the_great_sphinx.jpg"/>
 
 <br />
 <i>"An ancient Egyptian stone figure having a lion's body and a human or animal head."</i>
@@ -61,7 +61,7 @@ risk!
 To import `sphinxcrypto`, add the following to the dependencies section of
 your project's `Cargo.toml`:
 ```toml
-sphinxcrypto = "^0.0.18"
+sphinxcrypto = "^0.0.19"
 ```
 Then import the crate as:
 ```rust,no_run
