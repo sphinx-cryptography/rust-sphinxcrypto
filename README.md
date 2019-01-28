@@ -1,4 +1,4 @@
-# rust-sphinxcrypto [![](https://travis-ci.org/david415/rust-sphinxcrypto.png?branch=master)](https://www.travis-ci.org/david415/rust-sphinxcrypto) [![](https://img.shields.io/crates/v/sphinxcrypto.svg)](https://crates.io/crates/sphinxcrypto) [![](https://docs.rs/sphinxcrypto/badge.svg)](https://docs.rs/sphinxcrypto/)
+# rust-sphinxcrypto [![](https://travis-ci.org/sphinx-cryptography/rust-sphinxcrypto.png?branch=master)](https://www.travis-ci.org/sphinx-cryptography/rust-sphinxcrypto) [![](https://img.shields.io/crates/v/sphinxcrypto.svg)](https://crates.io/crates/sphinxcrypto) [![](https://docs.rs/sphinxcrypto/badge.svg)](https://docs.rs/sphinxcrypto/)
 
 This crate provides a concrete parameterization of the Sphinx
 cryptographic packet format which can be used to construct a
@@ -6,17 +6,11 @@ great many different kinds of cryptographic packet switching
 networks including high and low latency anonymity networks;<br />
 especially **mix networks.**
 
-**"Sphinx Mix Network Cryptographic Packet Format Specification"** :<BR>
-https://github.com/katzenpost/docs/blob/master/specs/sphinx.rst
 
-**Sphinx: A Compact and Provably Secure Mix Format**
-by George Danezis and Ian Goldberg.<BR> https://cypherpunks.ca/~iang/pubs/Sphinx_Oakland09.pdf
-
-
-## the mysteries of the sphinx
+## sphinx
 
 <img style="float: right; width: auto; height: 415px;"
-  src="https://github.com/david415/rust-sphinxcrypto/raw/add_sphinx_sketch.0/pix/dawn_on_the_great_sphinx.jpg"/>
+  src="https://github.com/applied-mixnetworks/rust-sphinxcrypto/raw/master/pix/dawn_on_the_great_sphinx.jpg"/>
 
 <br />
 <i>"An ancient Egyptian stone figure having a lion's body and a human or animal head."</i>
@@ -25,8 +19,14 @@ by George Danezis and Ian Goldberg.<BR> https://cypherpunks.ca/~iang/pubs/Sphinx
 
 The reference implementation of Sphinx used the Lioness, a wide-block cipher (aka SPRP) to
 encrypt the packet body, hence its namesake. This implementation uses
-<A HREF="https://github.com/david415/aez">AEZ</A>
-to encrypt the packet body because it's much faster.
+<A HREF="https://github.com/sphinx-cryptography/aez">AEZ</A>
+to encrypt the packet body instead of Lioness because it's much faster.
+
+**"Sphinx Mix Network Cryptographic Packet Format Specification"** :<BR>
+https://github.com/katzenpost/docs/blob/master/specs/sphinx.rst
+
+**Sphinx: A Compact and Provably Secure Mix Format**
+by George Danezis and Ian Goldberg.<BR> https://cypherpunks.ca/~iang/pubs/Sphinx_Oakland09.pdf
 
 The currently implemented Sphinx cryptographic parameterization is:
 
@@ -61,7 +61,7 @@ risk!
 To import `sphinxcrypto`, add the following to the dependencies section of
 your project's `Cargo.toml`:
 ```toml
-sphinxcrypto = "^0.0.17"
+sphinxcrypto = "^0.0.18"
 ```
 Then import the crate as:
 ```rust,no_run
