@@ -54,7 +54,7 @@ impl Error for SphinxUnwrapError {
         "I'm a SphinxUnwrapError."
     }
 
-    fn cause(&self) -> Option<&Error> {
+    fn cause(&self) -> Option<&dyn Error> {
         use self::SphinxUnwrapError::*;
         match *self {
             InvalidPacketError => None,
@@ -93,7 +93,7 @@ impl Error for SphinxHeaderCreateError {
         "I'm a Sphinx Header creation error."
     }
 
-    fn cause(&self) -> Option<&Error> {
+    fn cause(&self) -> Option<&dyn Error> {
         use self::SphinxHeaderCreateError::*;
         match *self {
             PathTooLongError => None,
@@ -135,7 +135,7 @@ impl Error for SphinxPacketCreateError {
         "I'm a Sphinx Packet creation error."
     }
 
-    fn cause(&self) -> Option<&Error> {
+    fn cause(&self) -> Option<&dyn Error> {
         use self::SphinxPacketCreateError::*;
         match *self {
             CreateHeaderError => None,
@@ -165,7 +165,7 @@ impl Error for SphinxSurbCreateError {
         "I'm a Sphinx Surb creation error."
     }
 
-    fn cause(&self) -> Option<&Error> {
+    fn cause(&self) -> Option<&dyn Error> {
         use self::SphinxSurbCreateError::*;
         match *self {
             CreateHeaderError => None,
@@ -193,7 +193,7 @@ impl Error for SphinxPacketFromSurbError {
         "I'm a Sphinx packet from SURB creation error."
     }
 
-    fn cause(&self) -> Option<&Error> {
+    fn cause(&self) -> Option<&dyn Error> {
         use self::SphinxPacketFromSurbError::*;
         match *self {
             ImpossibleError => None,
@@ -227,7 +227,7 @@ impl Error for SphinxDecryptSurbError {
         "I'm a Sphinx packet from SURB decryption error."
     }
 
-    fn cause(&self) -> Option<&Error> {
+    fn cause(&self) -> Option<&dyn Error> {
         use self::SphinxDecryptSurbError::*;
         match *self {
             InvalidSurbKeys => None,
