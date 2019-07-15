@@ -24,7 +24,7 @@ use ecdh_wrapper::{PublicKey, PrivateKey, exp};
 
 use super::utils::xor_assign;
 use super::constants::{NODE_ID_SIZE, HEADER_SIZE, MAX_HOPS, ROUTING_INFO_SIZE, PER_HOP_ROUTING_INFO_SIZE,
-                       V0_AD, FORWARD_PAYLOAD_SIZE, PACKET_SIZE, PAYLOAD_TAG_SIZE, SURB_SIZE, PAYLOAD_SIZE};
+                       V0_AD, FORWARD_PAYLOAD_SIZE, PAYLOAD_TAG_SIZE, SURB_SIZE, PAYLOAD_SIZE};
 use super::internal_crypto::{SPRP_KEY_SIZE, SPRP_IV_SIZE, GROUP_ELEMENT_SIZE, PacketKeys, kdf,
                              StreamCipher, MAC_SIZE, hmac, sprp_encrypt, sprp_decrypt};
 use super::commands::{RoutingCommand, commands_to_vec, NextHop};
@@ -204,7 +204,7 @@ pub fn create_header<R: Rng>(rng: &mut R, path: Vec<PathHop>) -> Result<([u8; HE
 ///
 /// * Returns a packet or an error.
 ///
-pub fn new_packet<R: Rng>(rng: &mut R, path: Vec<PathHop>, payload: [u8; FORWARD_PAYLOAD_SIZE]) -> Result<[u8; PACKET_SIZE], SphinxPacketCreateError>{
+pub fn new_packet<R: Rng>(rng: &mut R, path: Vec<PathHop>, payload: Vec<u8>) -> Result<Vec<u8>, SphinxPacketCreateError>{
     let _path_len = path.len();
     let _header_result = create_header(rng, path);
     if _header_result.is_err() {
@@ -219,7 +219,7 @@ pub fn new_packet<R: Rng>(rng: &mut R, path: Vec<PathHop>, payload: [u8; FORWARD
 
     // prepend payload tag of zero bytes
     let mut _payload = vec![0u8; PAYLOAD_TAG_SIZE];
-    _payload.extend(payload.iter());
+    _payload.extend(payload);
 
     // encrypt tagged payload with SPRP
     while i >= 0 {
@@ -228,9 +228,9 @@ pub fn new_packet<R: Rng>(rng: &mut R, path: Vec<PathHop>, payload: [u8; FORWARD
     }
 
     // attached Sphinx head to Sphinx body
-    let mut packet = [0u8; PACKET_SIZE];
-    packet[0..HEADER_SIZE].copy_from_slice(&header);
-    packet[HEADER_SIZE..].copy_from_slice(&_payload);
+    let mut packet: Vec<u8> = Vec::new();
+    packet.extend(header.iter());
+    packet.extend(&_payload);
     return Ok(packet);
 }
 
@@ -295,19 +295,20 @@ pub fn new_surb<R: Rng>(rng: &mut R, path: Vec<PathHop>) -> Result<([u8; SURB_SI
 ///
 /// * Returns a header and a vector of keys or an error.
 ///
-pub fn new_packet_from_surb(surb: [u8; SURB_SIZE], payload: [u8; FORWARD_PAYLOAD_SIZE]) -> Result<([u8; PACKET_SIZE], [u8; NODE_ID_SIZE]), SphinxPacketFromSurbError>{
+pub fn new_packet_from_surb(surb: [u8; SURB_SIZE], payload: Vec<u8>) -> Result<(Vec<u8>, [u8; NODE_ID_SIZE]), SphinxPacketFromSurbError>{
     // Deserialize the SURB.
     let (header, id, key, iv) = array_refs![&surb, HEADER_SIZE, NODE_ID_SIZE, SPRP_KEY_SIZE, SPRP_IV_SIZE];
 
     // Assemble the packet.
-    let mut packet = [0u8; PACKET_SIZE];
-    packet[..HEADER_SIZE].copy_from_slice(header);
+    let mut packet = Vec::new();
+    packet.extend(header.iter());
 
     // Encrypt the payload.
-    let mut crypt_payload = [0u8; PAYLOAD_SIZE];
-    crypt_payload[PAYLOAD_TAG_SIZE..].copy_from_slice(&payload[..]);
+    let mut crypt_payload = Vec::new();
+    crypt_payload.extend(&[0u8; PAYLOAD_TAG_SIZE]);
+    crypt_payload.extend(payload.iter());
     let ciphertext = sprp_encrypt(key, iv, crypt_payload[..].to_vec());
-    packet[HEADER_SIZE..].copy_from_slice(ciphertext.as_slice());
+    packet.extend(&ciphertext);
     return Ok((packet, *id));
 }
 

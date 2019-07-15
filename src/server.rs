@@ -40,7 +40,7 @@ use subtle::ConstantTimeEq;
 use ecdh_wrapper::{PublicKey, PrivateKey};
 
 use super::commands::{RoutingCommand, parse_routing_commands};
-use super::constants::{PACKET_SIZE, PAYLOAD_SIZE, AD_SIZE, ROUTING_INFO_SIZE, V0_AD, PER_HOP_ROUTING_INFO_SIZE, PAYLOAD_TAG_SIZE};
+use super::constants::{PAYLOAD_SIZE, AD_SIZE, ROUTING_INFO_SIZE, V0_AD, PER_HOP_ROUTING_INFO_SIZE, PAYLOAD_TAG_SIZE};
 use super::error::SphinxUnwrapError;
 use super::internal_crypto::{HASH_SIZE, MAC_SIZE, GROUP_ELEMENT_SIZE, StreamCipher, hash, kdf, hmac, sprp_decrypt};
 
@@ -61,10 +61,13 @@ const MAC_OFFSET: usize = ROUTING_INFO_OFFSET + ROUTING_INFO_SIZE;
 ///
 /// * 4-tuple containing (payload, replay_tag, vector of routing commands, SphinxUnwrapError)
 ///
-pub fn sphinx_packet_unwrap(private_key: &PrivateKey, packet: &mut [u8; PACKET_SIZE]) -> (Option<Vec<u8>>, Option<[u8; HASH_SIZE]>, Option<Vec<RoutingCommand>>, Option<SphinxUnwrapError>) {
+pub fn sphinx_packet_unwrap(private_key: &PrivateKey, packet: &mut [u8]) -> (Option<Vec<u8>>, Option<[u8; HASH_SIZE]>, Option<Vec<RoutingCommand>>, Option<SphinxUnwrapError>) {
     // Split into mutable references and validate the AD
-    let (authed_header, _mac, payload) = mut_array_refs![packet, MAC_OFFSET, MAC_SIZE, PAYLOAD_SIZE];
-    let (ad, group_element_bytes, routing_info) = mut_array_refs![authed_header, AD_SIZE, GROUP_ELEMENT_SIZE, ROUTING_INFO_SIZE];
+    let (header, payload) = packet.split_at_mut(MAC_OFFSET+MAC_SIZE);
+    let (authed_header, _mac) = header.split_at_mut(MAC_OFFSET);
+    let (ad, _after_ad) = authed_header.split_at_mut(AD_SIZE);
+    let (group_element_bytes, routing_info) = _after_ad.split_at_mut(GROUP_ELEMENT_SIZE);
+
     if ad.ct_eq(&V0_AD).unwrap_u8() == 0 {
         return (None, None, None, Some(SphinxUnwrapError::InvalidPacketError));
     }

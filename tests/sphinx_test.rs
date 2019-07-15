@@ -117,7 +117,7 @@ privacy, but electronic technologies do.");
         let path_c = path.clone();
 
 	// Create the packet.
-        let _packet_result = new_packet(&mut r, path, payload);
+        let _packet_result = new_packet(&mut r, path, payload.to_vec());
         let mut packet = _packet_result.unwrap();
 
         // Unwrap the packet, validating the output.
@@ -192,7 +192,7 @@ hurried on, Alice started to her feet.");
         let path = _tuple.1;
         let path_c = path.clone();
         let (surb, surb_keys) = new_surb(&mut r, path).unwrap();
-        let (mut packet, _next_mix) = new_packet_from_surb(surb, payload).unwrap();
+        let (mut packet, _next_mix) = new_packet_from_surb(surb, payload.to_vec()).unwrap();
         let mut i = 0;
         while i < num_hops {
             let _unwrap_tuple = sphinx_packet_unwrap(&nodes[i].private_key, &mut packet);

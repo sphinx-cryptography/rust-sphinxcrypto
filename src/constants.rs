@@ -65,9 +65,6 @@ pub const HEADER_SIZE: usize = AD_SIZE + GROUP_ELEMENT_SIZE + ROUTING_INFO_SIZE 
 /// The Sphinx packet payload size in bytes.
 pub const PAYLOAD_SIZE: usize = PAYLOAD_TAG_SIZE + FORWARD_PAYLOAD_SIZE;
 
-/// The size of a Sphinx packet in bytes.
-pub const PACKET_SIZE: usize = HEADER_SIZE + PAYLOAD_SIZE;
-
 /// The size in bytes of each routing info slot.
 pub const PER_HOP_ROUTING_INFO_SIZE: usize = RECIPIENT_SIZE + SURB_REPLY_SIZE;
 
