@@ -19,7 +19,7 @@
 extern crate chacha;
 extern crate keystream;
 extern crate hkdf;
-extern crate blake2b;
+extern crate blake2b_simd;
 extern crate aez;
 extern crate sha2;
 
@@ -29,7 +29,7 @@ use ecdh_wrapper::KEY_SIZE;
 
 use self::chacha::ChaCha as ChaCha20;
 use self::keystream::KeyStream;
-use self::blake2b::{blake2b, blake2b_keyed};
+use self::blake2b_simd::Params;
 use self::hkdf::Hkdf;
 
 
@@ -119,17 +119,26 @@ pub fn kdf(input: &[u8; KEY_SIZE]) -> PacketKeys {
 
 /// hash calculates the digest of a message
 pub fn hash(input: &[u8]) -> Vec<u8> {
-    let h = blake2b(HASH_SIZE, input);
+    let hash = Params::new()
+        .hash_length(HASH_SIZE)
+        .to_state()
+        .update(input)
+        .finalize();
     let mut out = Vec::new();
-    out.extend(h.iter());
+    out.extend(hash.as_bytes());
     return out;
 }
 
 /// hmac returns the hmac of the data using a given key
 pub fn hmac(key: &[u8; MAC_KEY_SIZE], data: &[u8]) -> [u8; MAC_SIZE] {
-    let _out = blake2b_keyed(MAC_SIZE, key, data);
+    let hash = Params::new()
+        .hash_length(MAC_SIZE)
+        .key(key)
+        .to_state()
+        .update(data)
+        .finalize();
     let mut out = [0u8; MAC_SIZE];
-    out.copy_from_slice(&_out.to_vec());
+    out.copy_from_slice(hash.as_bytes());
     return out;
 }
 
