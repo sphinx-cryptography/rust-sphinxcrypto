@@ -11,10 +11,6 @@ rust:
   - nightly
   - beta
   - stable
-matrix:
-  allow_failures:
-    - rust: beta
-    - rust: stable
 before_script:
   - |
       pip install --upgrade pip
