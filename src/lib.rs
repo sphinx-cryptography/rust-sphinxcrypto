@@ -43,7 +43,6 @@ extern crate byteorder;
 extern crate aez;
 extern crate subtle;
 extern crate keystream;
-extern crate chacha;
 extern crate blake2b_simd;
 
 pub mod constants;

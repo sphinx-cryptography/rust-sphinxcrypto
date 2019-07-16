@@ -18,7 +18,7 @@ byteorder = "1.2.6"
 rand = "^0.4.2"
 hkdf = "0.7.0"
 keystream = "^1.0.0"
-chacha = "^0.2.0"
+aes-ctr = "0.3.0"
 sha2 = "0.8.0"
 blake2b_simd = "0.5.4"
 subtle = { version = "2", default-features = false }

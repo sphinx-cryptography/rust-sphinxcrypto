@@ -16,21 +16,23 @@
 
 //! Sphinx crypto primitives
 
-extern crate chacha;
+extern crate aez;
+extern crate aes_ctr;
 extern crate keystream;
 extern crate hkdf;
 extern crate blake2b_simd;
-extern crate aez;
 extern crate sha2;
 
-use self::sha2::Sha256;
-use self::aez::aez::{encrypt, decrypt, AEZ_KEY_SIZE, AEZ_NONCE_SIZE};
 use ecdh_wrapper::KEY_SIZE;
-
-use self::chacha::ChaCha as ChaCha20;
-use self::keystream::KeyStream;
+use self::aez::aez::{encrypt, decrypt, AEZ_KEY_SIZE, AEZ_NONCE_SIZE};
+use self::sha2::Sha256;
 use self::blake2b_simd::Params;
 use self::hkdf::Hkdf;
+use self::aes_ctr::Aes128Ctr;
+use self::aes_ctr::stream_cipher::generic_array::GenericArray;
+use self::aes_ctr::stream_cipher::NewStreamCipher;
+use self::aes_ctr::stream_cipher::SyncStreamCipher;
+use self::keystream::KeyStream;
 
 
 /// the output size of the unkeyed hash in bytes
@@ -43,10 +45,10 @@ pub const MAC_KEY_SIZE: usize = 32;
 pub const MAC_SIZE: usize = 16;
 
 /// the key size of the stream cipher in bytes.
-pub const STREAM_KEY_SIZE: usize = 32;
+pub const STREAM_KEY_SIZE: usize = 16;
 
 /// the IV size of the stream cipher in bytes.
-pub const STREAM_IV_SIZE: usize = 12;
+pub const STREAM_IV_SIZE: usize = 16;
 
 /// the key size of the SPRP in bytes.
 pub const SPRP_KEY_SIZE: usize = AEZ_KEY_SIZE;
@@ -65,27 +67,29 @@ const KDF_INFO_STR: &str = "panoramix-kdf-v0-hkdf-sha256";
 
 /// stream cipher for sphinx crypto usage
 pub struct StreamCipher {
-    cipher: ChaCha20,
+    cipher: aes_ctr::Aes128Ctr,
 }
 
 impl StreamCipher {
     /// create a new StreamCipher struct
-    pub fn new(key: &[u8; STREAM_KEY_SIZE], iv: &[u8; STREAM_IV_SIZE]) -> StreamCipher {
+    pub fn new(raw_key: &[u8; STREAM_KEY_SIZE], raw_iv: &[u8; STREAM_IV_SIZE]) -> StreamCipher {
+        let key = GenericArray::from_slice(&raw_key[..]);
+        let iv = GenericArray::from_slice(raw_iv);
         StreamCipher {
-            cipher: ChaCha20::new_ietf(key, iv),
+            cipher: Aes128Ctr::new(&key, &iv),
         }
     }
 
     /// given a key return a cipher stream of length n
     pub fn generate(&mut self, n: usize) -> Vec<u8> {
         let mut output = vec![0u8; n];
-        self.cipher.xor_read(&mut output).unwrap();
+        self.cipher.apply_keystream(&mut output);
         output
     }
 
     pub fn xor_key_stream(&mut self, mut dst: &mut [u8], src: &[u8]) {
         dst.copy_from_slice(src);
-        self.cipher.xor_read(&mut dst).unwrap();
+        self.cipher.apply_keystream(dst);
     }
 }
 
@@ -154,4 +158,28 @@ pub fn sprp_decrypt(key: &[u8; SPRP_KEY_SIZE], iv: &[u8; SPRP_IV_SIZE], msg: Vec
 pub fn sprp_encrypt(key: &[u8; SPRP_KEY_SIZE], iv: &[u8; SPRP_IV_SIZE], msg: Vec<u8>) -> Vec<u8> {
     let output = encrypt(key, iv, &msg);
     output
+}
+
+
+#[cfg(test)]
+mod tests {
+    extern crate rand;
+    use super::*;
+    use self::rand::Rng;
+    use self::rand::os::OsRng;
+
+    #[test]
+    fn stream_cipher_vector_test() {
+        let mut rnd = OsRng::new().unwrap();
+        let raw_key = hex::decode("053ac00139e7bbd473953a6c310e26b6").unwrap();
+        let raw_iv = hex::decode("ff03c942f5c95a5eca94b1047a6e327e").unwrap();
+        let mut key = [0u8; STREAM_KEY_SIZE];
+        let mut iv = [0u8; STREAM_IV_SIZE];
+        key.copy_from_slice(raw_key.as_slice());
+        iv.copy_from_slice(raw_iv.as_slice());
+        let mut s = StreamCipher::new(&key, &iv);
+        let actual = s.generate(1024);
+        let expected = hex::decode("ee67d27a5853ae79bc0b7fae1bdfccfa2b3f01fb7d86287606a46ca5e580655cb8078db09e79fc2f6bf2a70c3baee04c72870aea12a3a8689b8ce32f1a370405e497df8a9d4df19bb793149dfbac4e1daeff4093c760f5d2a2733cee176f39957a0cafb1abb912cfaa610571fa234a01b79d73c23eea88f0e9d29603e7dfbe2708d8dbb162871b5b2a6cecb2ff6159f6b02bb7b3bb8f20e950f81bf53be772b9654cdb7084c924d09d15d1fda1206f21e2dc0d8012faa6761396c2b81b1d772b6b12a8249cf57bfc1be9471c9b5a9445c06662f3877578b7ffb91c18fa67fdcf62643ed0923f432760c36ca4a145f8e955fb4e04ef491dd274f436986bf3e2fa784f8c7a819d083f3b85e916edf0399d13168357ffcc15902eda24dfbcacd1a75765c1cae161c464851d1d8dfdb5ca302b0afcbb2968ec795a9c51738e3d71737f494d337a662be6e5c35b696b1523c3d0f5c2bddc8074c27a0c4a19e41d55a3d9093d6f5f77b804536b82e815e7dd9433e5cb0269ae71087d0b76b883c09728d089433a07a078944054943afc66e72a9bcd4993346ab5a676ca52e25ff0efd21643b65b69285719551a3d8d74b324ccaf7e3df43cac63fb5f1b1f5f8b3b89f9897c0e798f5b1c6f00e3558afb1b48763a2274709b59b856eae1cc27e4bddff635a24b00e2d074b0e9bef9933e8988dd6db2512e259aecf6e2c8979468375372ff87a3b6414aaa2d40c2db24fb13ee6687b5d6573a9d029cd37b2a151c392a99068d67d5e4ca46610b2e12da4ca1dd52eb8fa25bccea462c02a6f20a2a6e719f056685cacbf82af7f60018b4bdb94b22ea682956d062141220bed5d0d3e857864dd5903585e5374c766077d4f3f1e8347ee5263966b267497e8437617d0890631c37d7484890055a0279d01a280db37fb9c7f6b034cf979f49a93291b7599b1a6f91a9236857a8e313e6851e0c9cc7ecf03409b3adb825e9cb999b100af2a3f0b0202d89491346f5aa075478d4db9ebf0d15b43ec3a982d1d855251118a675b01c752ebe18c6642302c8b28cb4def2a897abdd5673fc9305c42deb610825f49155a81eb9bcb4813ad06ed66f4af79fd5184a7d650bea4cbde9069e21361376deae3a92a6828bc0349b78519f7237459f29aaf8c9b5b38c0b554e45e2dd8f89b6c1923b58d1103f5a33542759b746b9c14d0ede2f8b25714623bee152800014e1fce4cc990338f32e215f4b4e27206fcc4b3a5e68512290fd3c67fc0ea91db63f4314960ccbd36a3f7d0c2378d3d8c4dbb5269da62863970f96d7ee05e60da9b633adaf32c5575cb18f22acd62b3beb6d4eb38f291a6fe0534feb393baf38ec34ab05817bfcb789d794766a9fb319d35fac5940db3f98df3acc1385dae636b30211e5754df434e39041c9386d9b08c1cd1af3b0d8c026ce4a4e908153d3f93b8c").unwrap();
+        assert_eq!(actual, expected);
+    }
 }
