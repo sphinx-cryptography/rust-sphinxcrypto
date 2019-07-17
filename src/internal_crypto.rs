@@ -20,9 +20,9 @@ extern crate aez;
 extern crate aes_ctr;
 extern crate keystream;
 extern crate hkdf;
-extern crate blake2b_simd;
 extern crate sha2;
 extern crate digest;
+extern crate hmac;
 
 use ecdh_wrapper::KEY_SIZE;
 use self::aes_ctr::Aes128Ctr;
@@ -30,10 +30,9 @@ use self::aes_ctr::stream_cipher::NewStreamCipher;
 use self::aes_ctr::stream_cipher::SyncStreamCipher;
 use self::keystream::KeyStream;
 use self::aez::aez::{encrypt, decrypt, AEZ_KEY_SIZE, AEZ_NONCE_SIZE};
-use self::sha2::Sha256;
-use self::blake2b_simd::Params;
+use self::sha2::{Sha256, Sha512, Digest, Sha512Trunc256};
 use self::hkdf::Hkdf;
-
+use self::hmac::{Hmac, Mac};
 
 /// the output size of the unkeyed hash in bytes
 pub const HASH_SIZE: usize = 32;
@@ -130,27 +129,21 @@ pub fn hkdf_expand(prk: &[u8], info: &[u8]) -> [u8; KDF_OUTPUT_SIZE] {
 
 /// hash calculates the digest of a message
 pub fn hash(input: &[u8]) -> Vec<u8> {
-    let hash = Params::new()
-        .hash_length(HASH_SIZE)
-        .to_state()
-        .update(input)
-        .finalize();
-    let mut out = Vec::new();
-    out.extend(hash.as_bytes());
-    return out;
+    let mut hasher = Sha512Trunc256::new();
+    hasher.input(input);
+    let output = hasher.result().to_vec();
+    assert!(output.len() == HASH_SIZE);
+    output
 }
 
 /// hmac returns the hmac of the data using a given key
 pub fn hmac(key: &[u8; MAC_KEY_SIZE], data: &[u8]) -> [u8; MAC_SIZE] {
-    let hash = Params::new()
-        .hash_length(MAC_SIZE)
-        .key(key)
-        .to_state()
-        .update(data)
-        .finalize();
-    let mut out = [0u8; MAC_SIZE];
-    out.copy_from_slice(hash.as_bytes());
-    return out;
+    type HmacSha256 = Hmac<Sha256>;
+    let mut mac = HmacSha256::new_varkey(key).unwrap();
+    mac.input(data);
+    let mut output = [0u8; MAC_SIZE];
+    output.copy_from_slice(&mac.result().code().to_vec()[..MAC_SIZE]);
+    output
 }
 
 /// returns the plaintext of the message msg, decrypted via the
@@ -207,5 +200,24 @@ mod tests {
         assert_eq!(&payload_encryption, &packetKeys.payload_encryption[..].to_vec());
         let blinding_factor = hex::decode("22884af95653aef353d3bd3e8b7f9ac2214d4d4f4d726c7bd78553fb60982444").unwrap();
         assert_eq!(blinding_factor, packetKeys.blinding_factor);
+    }
+
+    #[test]
+    fn hash_vector_test() {
+        let input = hex::decode("f72fbd7f19e0f192524aea4973354479d6507d964242b30ded31c87e81c5c889").unwrap();
+        let want = hex::decode("9b931e466dc077f2cdf57784996dd19006a60e411692a8bdca4882c129c03a86").unwrap();
+        let actual = hash(&input);
+        assert_eq!(want, actual);
+    }
+
+    #[test]
+    fn hmac_vector_test() {
+        let raw_key = hex::decode("913058c7b4cd2fa62b7bae9a472ec5a661b3dd9dde95a9a66c86a806c1d16dd9").unwrap();
+        let mut key = [0u8; MAC_KEY_SIZE];
+        key.copy_from_slice(&raw_key);
+        let input = hex::decode("5fdc32e6ad5a1481154ff32f63b98d40bf0fd9cbb9338345d7651f472eb0effde63f121eede186b90c030fcf0b32277d11912d565b588f22d50a0b5dd5d64c4f362ff4d274420355223b784e3ed23aaef7f75083231ced2d75f7cb00e10f3e74eccef8529aaba7903a503412f2d63180e3792098fb99a63f77dd3ee45b40ac4a4968bda0641829a3edfe0eedb258f153e8da57e793a2846a4b15c9cdc3ef582d701d9a3d3b0a50b14f4efcfbd4f0ec39586ee4aa7adeee16074a458796db97e7d68172e3246aa03c551a5e7856c26df3ef9847087afa2028957a946abf07dd9af6b4b3506edcccddce9eb2817d6b241ca087f4a65c9e0d7a2babea036b2f61fa").unwrap();
+        let want = hex::decode("889e54ad527eefe52eea004a07660d7a").unwrap();
+        let actual = hmac(&key, &input);
+        assert_eq!(want, actual);
     }
 }
