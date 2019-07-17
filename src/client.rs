@@ -185,7 +185,7 @@ pub fn create_header<R: Rng>(rng: &mut R, path: Vec<PathHop>) -> Result<([u8; HE
     while i < num_hops {
         let k = SprpKey{
             key: keys[i].payload_encryption,
-            iv: keys[i].payload_encryption_iv,
+            iv: keys[i].header_encryption_iv,
         };
         sprp_keys.push(k);
         i += 1

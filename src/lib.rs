@@ -44,6 +44,7 @@ extern crate aez;
 extern crate subtle;
 extern crate keystream;
 extern crate blake2b_simd;
+extern crate digest;
 
 pub mod constants;
 pub mod commands;

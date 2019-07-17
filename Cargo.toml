@@ -22,6 +22,7 @@ aes-ctr = "0.3.0"
 sha2 = "0.8.0"
 blake2b_simd = "0.5.4"
 subtle = { version = "2", default-features = false }
+digest = "0.8.1"
 
 [features]
 nightly = ["subtle/nightly"]
