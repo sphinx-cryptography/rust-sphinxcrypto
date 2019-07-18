@@ -119,10 +119,7 @@ pub fn kdf(input: &[u8; KEY_SIZE]) -> PacketKeys {
 
 pub fn hkdf_expand(prk: &[u8], info: &[u8]) -> [u8; KDF_OUTPUT_SIZE] {
     let mut output = [0u8; KDF_OUTPUT_SIZE];
-    use digest::generic_array::GenericArray;
-    let hk = Hkdf::<Sha256>{
-        prk: *GenericArray::from_slice(prk),
-    };
+    let hk = Hkdf::<Sha256>::from_prk(prk).unwrap();
     hk.expand(info, &mut output).unwrap();
     output
 }
