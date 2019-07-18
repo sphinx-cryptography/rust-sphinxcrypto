@@ -20,7 +20,7 @@ keystream = "^1.0.0"
 aes-ctr = "0.3.0"
 hmac = "0.7.1"
 sha2 = "0.8.0"
-hkdf = "0.7.0"
+hkdf = "0.7.1"
 digest = "0.8.1"
 subtle = { version = "2", default-features = false }
 
