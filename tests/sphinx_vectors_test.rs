@@ -57,8 +57,7 @@ fn sphinx_vector_test() {
         while j < tests[i].Nodes.len() {
             let node_keypair = PrivateKey::from_bytes(&hex::decode(&tests[i].Nodes[j].PrivateKey).unwrap()).unwrap();
             let (payload, tag, commands, err) = sphinx_packet_unwrap(&node_keypair, &mut packet);
-            //assert!(err.is_none());
-            eprintln!("Sphinx Unwrap error: {:?}", err);
+            assert!(err.is_none());
             j += 1;
         }
         i += 1;
