@@ -13,18 +13,22 @@ extern crate ecdh_wrapper;
 use std::fs::File;
 use std::io::Read;
 
-use ecdh_wrapper::{PublicKey, PrivateKey};
+use ecdh_wrapper::PrivateKey;
 
 use sphinxcrypto::server::sphinx_packet_unwrap;
+use sphinxcrypto::commands::RoutingCommand;
+use sphinxcrypto::client::decrypt_surb_payload;
 
 
 #[derive(Deserialize, Debug)]
+#[allow(non_snake_case)]
 struct HexNodeParams {
     ID: String,
     PrivateKey: String,
 }
 
 #[derive(Deserialize, Debug)]
+#[allow(non_snake_case)]
 struct HexPathHop {
     ID: String,
     PublicKey: String,
@@ -32,6 +36,7 @@ struct HexPathHop {
 }
 
 #[derive(Deserialize, Debug)]
+#[allow(non_snake_case)]
 struct HexSphinxTest {
     Nodes: Vec<HexNodeParams>,
     Path: Vec<HexPathHop>,
@@ -56,8 +61,36 @@ fn sphinx_vector_test() {
         packet.extend(hex::decode(&tests[i].Packets[0]).unwrap());
         while j < tests[i].Nodes.len() {
             let node_keypair = PrivateKey::from_bytes(&hex::decode(&tests[i].Nodes[j].PrivateKey).unwrap()).unwrap();
-            let (payload, tag, commands, err) = sphinx_packet_unwrap(&node_keypair, &mut packet);
+            let (payload, _tag, commands, err) = sphinx_packet_unwrap(&node_keypair, &mut packet);
             assert!(err.is_none());
+            if j == tests[i].Path.len()-1 {
+                // last hop
+                if tests[i].Surb.len() > 0 {
+                    let commands = commands.unwrap();
+                    assert_eq!(2, commands.len());
+                    assert_eq!(commands[0].to_vec(), hex::decode(&tests[i].Path[j].Commands[0]).unwrap());
+                    assert_eq!(commands[1].to_vec(), hex::decode(&tests[i].Path[j].Commands[1]).unwrap());
+                    let plaintext = decrypt_surb_payload(payload.unwrap(), hex::decode(&tests[i].SurbKeys).unwrap()).unwrap();
+                    assert_eq!(plaintext, hex::decode(&tests[i].Payload).unwrap());
+                } else {
+                    let commands = commands.unwrap();
+                    assert_eq!(1, commands.len());
+                    assert_eq!(commands[0].to_vec(), hex::decode(&tests[i].Path[j].Commands[0]).unwrap());
+                    assert_eq!(payload.unwrap(), hex::decode(&tests[i].Payload).unwrap());
+                }
+            } else {
+                // not last hop
+                let commands = commands.unwrap();
+                assert_eq!(packet, hex::decode(&tests[i].Packets[j+1]).unwrap());
+                assert_eq!(2, commands.len());
+                assert_eq!(commands[0].to_vec(), hex::decode(&tests[i].Path[j].Commands[0]).unwrap());
+                if let RoutingCommand::NextHop(n) = &commands[1] {
+                    assert_eq!(hex::decode(&tests[i].Path[j+1].ID).unwrap(), n.id);
+                } else {
+                    panic!("next hop command not found");
+                }
+            }
+
             j += 1;
         }
         i += 1;
