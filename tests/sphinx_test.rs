@@ -216,9 +216,7 @@ hurried on, Alice started to her feet.");
                     },
                     _ => panic!("wtf"),
                 }
-                let mut _payload = [0u8; PAYLOAD_SIZE];
-                _payload.copy_from_slice(final_payload_res.unwrap().as_slice());
-                let _result = decrypt_surb_payload(_payload, surb_keys.clone());
+                let _result = decrypt_surb_payload(final_payload_res.unwrap(), surb_keys.clone());
                 assert!(_result.is_ok());
                 assert_eq!(_result.unwrap(), payload.to_vec());
             }

@@ -323,7 +323,7 @@ pub fn new_packet_from_surb(surb: [u8; SURB_SIZE], payload: Vec<u8>) -> Result<(
 ///
 /// * Returns a decrypted payload or an error.
 ///
-pub fn decrypt_surb_payload(payload: [u8; PAYLOAD_SIZE], keys: Vec<u8>) -> Result<Vec<u8>, SphinxDecryptSurbError> {
+pub fn decrypt_surb_payload(payload: Vec<u8>, keys: Vec<u8>) -> Result<Vec<u8>, SphinxDecryptSurbError> {
     assert!(keys.len() % SPRP_KEY_MATERIAL_SIZE == 0);
     let num_hops = keys.len() / SPRP_KEY_MATERIAL_SIZE;
     if keys.len() % SPRP_KEY_MATERIAL_SIZE != 0 || num_hops < 1 {
