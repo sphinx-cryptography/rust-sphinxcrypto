@@ -1,6 +1,6 @@
 [package]
 name = "sphinxcrypto"
-version = "0.0.19"
+version = "0.1.0"
 authors = ["David Stainton <dstainton415@gmail.com>"]
 description = "Sphinx cryptographic packet format library"
 homepage = "https://github.com/sphinx-cryptography/rust-sphinxcrypto"
