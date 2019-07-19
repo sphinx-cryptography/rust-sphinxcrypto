@@ -13,7 +13,7 @@ use ecdh_wrapper::PrivateKey;
 
 use sphinxcrypto::server::sphinx_packet_unwrap;
 use sphinxcrypto::client::{new_packet, PathHop, new_surb, new_packet_from_surb, decrypt_surb_payload};
-use sphinxcrypto::constants::{MAX_HOPS, NODE_ID_SIZE, FORWARD_PAYLOAD_SIZE, RECIPIENT_ID_SIZE, SURB_ID_SIZE, PAYLOAD_SIZE};
+use sphinxcrypto::constants::{MAX_HOPS, NODE_ID_SIZE, FORWARD_PAYLOAD_SIZE, RECIPIENT_ID_SIZE, SURB_ID_SIZE};
 use sphinxcrypto::commands::{RoutingCommand, Delay, SURBReply, Recipient};
 
 

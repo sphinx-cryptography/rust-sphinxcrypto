@@ -28,9 +28,8 @@ use ecdh_wrapper::KEY_SIZE;
 use self::aes_ctr::Aes128Ctr;
 use self::aes_ctr::stream_cipher::NewStreamCipher;
 use self::aes_ctr::stream_cipher::SyncStreamCipher;
-use self::keystream::KeyStream;
 use self::aez::aez::{encrypt, decrypt, AEZ_KEY_SIZE, AEZ_NONCE_SIZE};
-use self::sha2::{Sha256, Sha512, Digest, Sha512Trunc256};
+use self::sha2::{Sha256, Digest, Sha512Trunc256};
 use self::hkdf::Hkdf;
 use self::hmac::{Hmac, Mac};
 
@@ -88,7 +87,7 @@ impl StreamCipher {
         output
     }
 
-    pub fn xor_key_stream(&mut self, mut dst: &mut [u8], src: &[u8]) {
+    pub fn xor_key_stream(&mut self, dst: &mut [u8], src: &[u8]) {
         dst.copy_from_slice(src);
         self.cipher.apply_keystream(dst);
     }
@@ -167,8 +166,6 @@ mod tests {
     extern crate hex;
 
     use super::*;
-    use self::rand::Rng;
-    use self::rand::os::OsRng;
 
     #[test]
     fn stream_cipher_vector_test() {
@@ -189,17 +186,17 @@ mod tests {
         let input = hex::decode("9dd74a26535e05ba0ddb62e06ef9b3b29b089707b4652b9172d91e529c938b51").unwrap();
         let mut key = [0u8; KEY_SIZE];
         key.copy_from_slice(&input);
-        let packetKeys = kdf(&key);
+        let packet_keys = kdf(&key);
         let header_mac = hex::decode("56a3cca100da21fa9823df7884132e89e2155dadbf425e62ba43392c81581a69").unwrap();
-        assert_eq!(header_mac, packetKeys.header_mac);
+        assert_eq!(header_mac, packet_keys.header_mac);
         let header_encryption = hex::decode("fa4f8808bad302e8247cf71dbaefe3ae").unwrap();
-        assert_eq!(header_encryption, packetKeys.header_encryption);
+        assert_eq!(header_encryption, packet_keys.header_encryption);
         let header_encryption_iv = hex::decode("3499437e566a8f8cae363b428db7eff9").unwrap();
-        assert_eq!(header_encryption_iv, packetKeys.header_encryption_iv);
+        assert_eq!(header_encryption_iv, packet_keys.header_encryption_iv);
         let payload_encryption = hex::decode("382d5480e7ebc3c001d04a350f6da76882f26dff7fd14e304bce0aa6d464e6e4a440aad784b18c062700c352e7df6c44").unwrap();
-        assert_eq!(&payload_encryption, &packetKeys.payload_encryption[..].to_vec());
+        assert_eq!(&payload_encryption, &packet_keys.payload_encryption[..].to_vec());
         let blinding_factor = hex::decode("22884af95653aef353d3bd3e8b7f9ac2214d4d4f4d726c7bd78553fb60982444").unwrap();
-        assert_eq!(blinding_factor, packetKeys.blinding_factor);
+        assert_eq!(blinding_factor, packet_keys.blinding_factor);
     }
 
     #[test]

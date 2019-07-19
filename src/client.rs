@@ -24,7 +24,7 @@ use ecdh_wrapper::{PublicKey, PrivateKey, exp};
 
 use super::utils::xor_assign;
 use super::constants::{NODE_ID_SIZE, HEADER_SIZE, MAX_HOPS, ROUTING_INFO_SIZE, PER_HOP_ROUTING_INFO_SIZE,
-                       V0_AD, FORWARD_PAYLOAD_SIZE, PAYLOAD_TAG_SIZE, SURB_SIZE, PAYLOAD_SIZE};
+                       V0_AD, PAYLOAD_TAG_SIZE, SURB_SIZE};
 use super::internal_crypto::{SPRP_KEY_SIZE, SPRP_IV_SIZE, GROUP_ELEMENT_SIZE, PacketKeys, kdf,
                              StreamCipher, MAC_SIZE, hmac, sprp_encrypt, sprp_decrypt};
 use super::commands::{RoutingCommand, commands_to_vec, NextHop};

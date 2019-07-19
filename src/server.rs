@@ -40,7 +40,7 @@ use subtle::ConstantTimeEq;
 use ecdh_wrapper::{PublicKey, PrivateKey};
 
 use super::commands::{RoutingCommand, parse_routing_commands};
-use super::constants::{PAYLOAD_SIZE, AD_SIZE, ROUTING_INFO_SIZE, V0_AD, PER_HOP_ROUTING_INFO_SIZE, PAYLOAD_TAG_SIZE};
+use super::constants::{AD_SIZE, ROUTING_INFO_SIZE, V0_AD, PER_HOP_ROUTING_INFO_SIZE, PAYLOAD_TAG_SIZE};
 use super::error::SphinxUnwrapError;
 use super::internal_crypto::{HASH_SIZE, MAC_SIZE, GROUP_ELEMENT_SIZE, StreamCipher, hash, kdf, hmac, sprp_decrypt};
 
