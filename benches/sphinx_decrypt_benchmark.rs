@@ -27,7 +27,7 @@ use ecdh_wrapper::PrivateKey;
 
 use sphinxcrypto::server::sphinx_packet_unwrap;
 use sphinxcrypto::client::{new_packet, PathHop};
-use sphinxcrypto::constants::{MAX_HOPS, NODE_ID_SIZE, FORWARD_PAYLOAD_SIZE, RECIPIENT_ID_SIZE, SURB_ID_SIZE};
+use sphinxcrypto::constants::{MAX_HOPS, NODE_ID_SIZE, RECIPIENT_ID_SIZE, SURB_ID_SIZE};
 use sphinxcrypto::commands::{RoutingCommand, Delay, SURBReply, Recipient};
 
 
@@ -108,15 +108,13 @@ fn new_path_vector<R: Rng>(rng: &mut R, num_hops: u8, is_surb: bool) -> (Vec<Nod
 }
 
 fn criterion_sphinx_unwrap_benchmark(c: &mut Criterion) {
-    let mut payload = [0u8; FORWARD_PAYLOAD_SIZE];
     let s = String::from("We must defend our own privacy if we expect to have any. \
                           We must come together and create systems which allow anonymous transactions to take place. \
                           People have been defending their own privacy for centuries with whispers, darkness, envelopes, \
                           closed doors, secret handshakes, and couriers. The technologies of the past did not allow for strong \
                           privacy, but electronic technologies do.");
     let _s_len = s.len();
-    let string_bytes = s.into_bytes();
-    payload[.._s_len].copy_from_slice(&string_bytes);
+    let payload = s.into_bytes();
 
     let mut r = os_rng();
     let is_surb = false;
