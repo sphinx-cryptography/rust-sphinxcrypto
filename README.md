@@ -27,14 +27,17 @@ https://github.com/katzenpost/docs/blob/master/specs/sphinx.rst
 
 **Sphinx: A Compact and Provably Secure Mix Format**
 by George Danezis and Ian Goldberg.<BR> https://cypherpunks.ca/~iang/pubs/Sphinx_Oakland09.pdf
+<BR>
 
-The currently implemented Sphinx cryptographic parameterization is:
+This Sphinx implementation is binary compatible with the Katzenpost golang Sphinx
+and shares test vectors. ( https://github.com/katzenpost/core/tree/master/sphinx )
+The cryptographic parameterization is:
 
 * EXP(X, Y) - X25519
-* MAC(K, M), H(M) - Blake2b
-* S(K, IV) - Chacha20
-* KDF(SALT, IKM) - HKDF Sha256
-* SPRP_Encrypt(K, M)/SPRP_Decrypt(K, M) - AEZ
+* MAC(K, M), H(M) - HMAC-SHA256-128
+* S(K, IV) - CTR-AES128
+* KDF(SALT, IKM) - HKDF expand SHA256
+* SPRP_Encrypt(K, M)/SPRP_Decrypt(K, M) - AEZv5
 
 The Sphinx packet geometry is parameterized in the **constants** submodule.
 
