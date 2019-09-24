@@ -28,10 +28,14 @@ use ecdh_wrapper::KEY_SIZE;
 use self::aes_ctr::Aes128Ctr;
 use self::aes_ctr::stream_cipher::NewStreamCipher;
 use self::aes_ctr::stream_cipher::SyncStreamCipher;
-use self::aez::aez::{encrypt, decrypt, AEZ_KEY_SIZE, AEZ_NONCE_SIZE};
+use self::aez::Aez;
 use self::sha2::{Sha256, Digest, Sha512Trunc256};
 use self::hkdf::Hkdf;
 use self::hmac::{Hmac, Mac};
+
+
+pub const AEZ_KEY_SIZE: usize = 48;
+pub const AEZ_NONCE_SIZE: usize = 16;
 
 /// the output size of the unkeyed hash in bytes
 pub const HASH_SIZE: usize = 32;
@@ -144,16 +148,20 @@ pub fn hmac(key: &[u8; MAC_KEY_SIZE], data: &[u8]) -> [u8; MAC_SIZE] {
 
 /// returns the plaintext of the message msg, decrypted via the
 /// Sphinx SPRP with a given key and IV.
-pub fn sprp_decrypt(key: &[u8; SPRP_KEY_SIZE], iv: &[u8; SPRP_IV_SIZE], msg: Vec<u8>) -> Result<Vec<u8>, aez::error::AezDecryptionError> {
-    let output = decrypt(key, iv, &msg)?;
-    Ok(output)
+pub fn sprp_decrypt(key: &[u8; SPRP_KEY_SIZE], iv: &[u8; SPRP_IV_SIZE], msg: Vec<u8>) -> Result<Vec<u8>, ()> {
+    let cipher = Aez::new(&key[..]);
+    let mut plaintext = vec![0u8; msg.len()];
+    cipher.decrypt(&iv[..], None, &msg, &mut plaintext)?;
+    Ok(plaintext)
 }
 
 /// returns the ciphertext of the message msg, encrypted via the
 /// Sphinx SPRP with a given key and IV.
 pub fn sprp_encrypt(key: &[u8; SPRP_KEY_SIZE], iv: &[u8; SPRP_IV_SIZE], msg: Vec<u8>) -> Vec<u8> {
-    let output = encrypt(key, iv, &msg);
-    output
+    let cipher = Aez::new(&key[..]);
+    let mut ciphertext = vec![0u8; msg.len()];
+    cipher.encrypt(&iv[..], None, &msg, &mut ciphertext);
+    ciphertext
 }
 
 

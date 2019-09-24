@@ -12,7 +12,6 @@ license = "AGPL-3.0-only"
 
 [dependencies]
 ecdh_wrapper = "0.0.9"
-aez = "0.0.6"
 arrayref = "^0.3.5"
 byteorder = "1.2.6"
 rand = "^0.4.2"
@@ -23,6 +22,10 @@ sha2 = "0.8.0"
 hkdf = "0.8.0"
 digest = "0.8.1"
 subtle = { version = "2", default-features = false }
+
+[dependencies.aez]
+git = "https://github.com/sphinx-cryptography/aez"
+tag = "0.0.7"
 
 [features]
 nightly = ["subtle/nightly"]
