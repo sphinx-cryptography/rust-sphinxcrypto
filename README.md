@@ -64,7 +64,7 @@ risk!
 To import `sphinxcrypto`, add the following to the dependencies section of
 your project's `Cargo.toml`:
 ```toml
-sphinxcrypto = "^0.1.0"
+sphinxcrypto = "^0.1.1"
 ```
 Then import the crate as:
 ```rust,no_run
