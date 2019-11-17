@@ -122,6 +122,7 @@ pub fn create_header<R: Rng>(rng: &mut R, path: Vec<PathHop>) -> Result<([u8; HE
     let skipped_hops = MAX_HOPS - num_hops;
     if skipped_hops > 0 {
         routing_info = vec![0u8; skipped_hops * PER_HOP_ROUTING_INFO_SIZE];
+        rng.fill_bytes(&mut routing_info);
     }
 
     let mut i: i8 = num_hops as i8 - 1;
