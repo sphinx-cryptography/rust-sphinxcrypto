@@ -38,13 +38,14 @@
 
 #[macro_use]
 extern crate arrayref;
-extern crate ecdh_wrapper;
+
 extern crate byteorder;
 extern crate aez;
-extern crate subtle;
 extern crate keystream;
 extern crate digest;
 extern crate hmac;
+extern crate subtle;
+extern crate x25519_dalek_ng;
 
 pub mod constants;
 pub mod commands;

@@ -16,13 +16,8 @@
 
 //! Sphinx error types.
 
-extern crate ecdh_wrapper;
-
 use std::error::Error;
 use std::fmt;
-
-use ecdh_wrapper::errors::KeyError;
-
 
 #[derive(Debug)]
 pub enum SphinxUnwrapError {
@@ -71,7 +66,6 @@ impl Error for SphinxUnwrapError {
 pub enum SphinxHeaderCreateError {
     PathTooLongError,
     SerializeCommandsError,
-    KeyGenFail(KeyError),
     ImpossibleError,
 }
 
@@ -81,7 +75,6 @@ impl fmt::Display for SphinxHeaderCreateError {
         match self {
             PathTooLongError => write!(f, "Path length must not exceed MAX_HOPS."),
             SerializeCommandsError => write!(f, "Failed to serialize commands."),
-            KeyGenFail(e) => write!(f, "Key generation failure: {}", e),
             ImpossibleError => write!(f, "This should never happen."),
         }
     }
@@ -98,18 +91,10 @@ impl Error for SphinxHeaderCreateError {
         match *self {
             PathTooLongError => None,
             SerializeCommandsError => None,
-            KeyGenFail(_) => None,
             ImpossibleError => None,
         }
     }
 }
-
-impl From<KeyError> for SphinxHeaderCreateError {
-    fn from(error: KeyError) -> Self {
-        SphinxHeaderCreateError::KeyGenFail(error)
-    }
-}
-
 
 #[derive(Debug)]
 pub enum SphinxPacketCreateError {

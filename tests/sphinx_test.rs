@@ -1,15 +1,15 @@
 // sphinx_test.rs - sphinx cryptographic packet format tests
 // Copyright (C) 2018  David Stainton.
 
-extern crate rand;
+extern crate rand_core;
+extern crate x25519_dalek_ng;
 extern crate sphinxcrypto;
-extern crate ecdh_wrapper;
-//extern crate rustc_serialize;
 
-//use self::rustc_serialize::hex::ToHex;
-use self::rand::Rng;
-use self::rand::os::OsRng;
-use ecdh_wrapper::PrivateKey;
+use self::rand_core::CryptoRng;
+use self::rand_core::RngCore;
+use rand_core::OsRng;
+
+use x25519_dalek_ng::{StaticSecret, PublicKey};
 
 use sphinxcrypto::server::sphinx_packet_unwrap;
 use sphinxcrypto::client::{new_packet, PathHop, new_surb, new_packet_from_surb, decrypt_surb_payload};
@@ -19,31 +19,27 @@ use sphinxcrypto::commands::{RoutingCommand, Delay, SURBReply, Recipient};
 
 struct NodeParams {
     pub id: [u8; NODE_ID_SIZE],
-    pub private_key: PrivateKey,
+    pub private_key: StaticSecret,
 }
 
-fn os_rng() -> OsRng {
-    OsRng::new().expect("failure to create an OS RNG")
-}
-
-fn new_node<R: Rng>(rng: &mut R) -> NodeParams {
+fn new_node<T: RngCore + CryptoRng + Copy>(mut csprng: T) -> NodeParams {
     let mut id = [0u8; NODE_ID_SIZE];
-    rng.fill_bytes(&mut id);
-    let keypair = PrivateKey::generate(rng).unwrap();
+    csprng.fill_bytes(&mut id);
+    let private_key = StaticSecret::new(csprng);
     return NodeParams{
         id: id,
-        private_key: keypair,
+        private_key: private_key,
     };
 }
 
-fn new_path_vector<R: Rng>(rng: &mut R, num_hops: u8, is_surb: bool) -> (Vec<NodeParams>, Vec<PathHop>) {
+fn new_path_vector<T: RngCore + CryptoRng + Copy>(mut csprng: T, num_hops: u8, is_surb: bool) -> (Vec<NodeParams>, Vec<PathHop>) {
     const DELAY_BASE: u32 = 123;
 
     // Generate the keypairs and node identifiers for the "nodes".
     let mut nodes = vec![];
     let mut i = 0;
     while i < num_hops {
-        nodes.push(new_node(rng));
+        nodes.push(new_node(csprng));
         i += 1;
     }
 
@@ -63,7 +59,7 @@ fn new_path_vector<R: Rng>(rng: &mut R, num_hops: u8, is_surb: bool) -> (Vec<Nod
         } else {
 	    // Terminal hop, add the recipient.
             let mut rcpt_id = [0u8; RECIPIENT_ID_SIZE];
-            rng.fill_bytes(&mut rcpt_id);
+            csprng.fill_bytes(&mut rcpt_id);
             let rcpt = RoutingCommand::Recipient(
                 Recipient{
                     id: rcpt_id,
@@ -73,7 +69,7 @@ fn new_path_vector<R: Rng>(rng: &mut R, num_hops: u8, is_surb: bool) -> (Vec<Nod
 
             if is_surb {
                 let mut surb_id = [0u8; SURB_ID_SIZE];
-                rng.fill_bytes(&mut surb_id);
+                csprng.fill_bytes(&mut surb_id);
                 let surb_reply = RoutingCommand::SURBReply(
                     SURBReply{
                         id: surb_id,
@@ -84,7 +80,7 @@ fn new_path_vector<R: Rng>(rng: &mut R, num_hops: u8, is_surb: bool) -> (Vec<Nod
         }
         let hop = PathHop {
             id: nodes[i as usize].id,
-            public_key: nodes[i as usize].private_key.public_key(),
+            public_key: PublicKey::from(&nodes[i as usize].private_key),
             commands: Some(commands),
         };
         path.push(hop);
@@ -106,18 +102,17 @@ privacy, but electronic technologies do.");
     payload[.._s_len].copy_from_slice(&string_bytes);
 
     // Generate the "nodes" and path for the forward sphinx packet.
-    let mut r = os_rng();
     let is_surb = false;
 
     let mut num_hops = 1;
     while num_hops <= MAX_HOPS {
-        let _tuple = new_path_vector(&mut r, num_hops as u8, is_surb);
+        let _tuple = new_path_vector(OsRng, num_hops as u8, is_surb);
         let nodes = _tuple.0;
         let path = _tuple.1;
         let path_c = path.clone();
 
 	// Create the packet.
-        let _packet_result = new_packet(&mut r, path, payload.to_vec());
+        let _packet_result = new_packet(OsRng, path, payload.to_vec());
         let mut packet = _packet_result.unwrap();
 
         // Unwrap the packet, validating the output.
@@ -126,10 +121,10 @@ privacy, but electronic technologies do.");
             let _unwrap_tuple = sphinx_packet_unwrap(&nodes[i].private_key, &mut packet);
             let maybe_cmds = _unwrap_tuple.2;
             let err = _unwrap_tuple.3;
+            assert!(err.is_none());
             let final_payload = _unwrap_tuple.0;
             let cmds = maybe_cmds.unwrap();
 
-            assert!(err.is_none());
             if i == nodes.len() - 1 {
                 assert!(cmds.len() == 1);
                 assert_eq!(final_payload.unwrap().as_slice(), &payload[..]);
@@ -183,24 +178,24 @@ hurried on, Alice started to her feet.");
     let string_bytes = s.into_bytes();
     payload[.._s_len].copy_from_slice(&string_bytes);
 
-    let mut r = os_rng();
     let is_surb = true;
     let mut num_hops = 1;
     while num_hops <= MAX_HOPS {
-        let _tuple = new_path_vector(&mut r, num_hops as u8, is_surb);
+        let _tuple = new_path_vector(OsRng, num_hops as u8, is_surb);
         let nodes = _tuple.0;
         let path = _tuple.1;
         let path_c = path.clone();
-        let (surb, surb_keys) = new_surb(&mut r, path).unwrap();
+        let (surb, surb_keys) = new_surb(OsRng, path).unwrap();
         let (mut packet, _next_mix) = new_packet_from_surb(surb, payload.to_vec()).unwrap();
         let mut i = 0;
         while i < num_hops {
             let _unwrap_tuple = sphinx_packet_unwrap(&nodes[i].private_key, &mut packet);
             let option_cmds = _unwrap_tuple.2;
             let err = _unwrap_tuple.3;
+            assert!(err.is_none());
             let final_payload_res = _unwrap_tuple.0;
             let cmds = option_cmds.unwrap();
-            assert!(err.is_none());
+
             assert!(cmds.len() == 2);
             if i == nodes.len() - 1 {
                 match cmds[0] {

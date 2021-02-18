@@ -37,7 +37,7 @@
 
 
 use subtle::ConstantTimeEq;
-use ecdh_wrapper::{PublicKey, PrivateKey};
+use x25519_dalek_ng::{StaticSecret, PublicKey};
 
 use super::commands::{RoutingCommand, parse_routing_commands};
 use super::constants::{AD_SIZE, ROUTING_INFO_SIZE, V0_AD, PER_HOP_ROUTING_INFO_SIZE, PAYLOAD_TAG_SIZE};
@@ -61,34 +61,27 @@ const MAC_OFFSET: usize = ROUTING_INFO_OFFSET + ROUTING_INFO_SIZE;
 ///
 /// * 4-tuple containing (payload, replay_tag, vector of routing commands, SphinxUnwrapError)
 ///
-pub fn sphinx_packet_unwrap(private_key: &PrivateKey, packet: &mut [u8]) -> (Option<Vec<u8>>, Option<[u8; HASH_SIZE]>, Option<Vec<RoutingCommand>>, Option<SphinxUnwrapError>) {
+pub fn sphinx_packet_unwrap(private_key: &StaticSecret, packet: &mut [u8]) -> (Option<Vec<u8>>, Option<[u8; HASH_SIZE]>, Option<Vec<RoutingCommand>>, Option<SphinxUnwrapError>) {
     // Split into mutable references and validate the AD
     let (header, payload) = packet.split_at_mut(MAC_OFFSET+MAC_SIZE);
     let (authed_header, _mac) = header.split_at_mut(MAC_OFFSET);
     let (ad, _after_ad) = authed_header.split_at_mut(AD_SIZE);
-    let (group_element_bytes, routing_info) = _after_ad.split_at_mut(GROUP_ELEMENT_SIZE);
+    let after_ad = array_mut_ref![_after_ad, 0, GROUP_ELEMENT_SIZE + ROUTING_INFO_SIZE];
+    let (group_element_bytes, routing_info) = mut_array_refs![after_ad, GROUP_ELEMENT_SIZE, ROUTING_INFO_SIZE];
 
     if ad.ct_eq(&V0_AD).unwrap_u8() == 0 {
         return (None, None, None, Some(SphinxUnwrapError::InvalidPacketError));
     }
 
     // Calculate the hop's shared secret, and replay_tag.
-    let mut group_element = PublicKey::default();
-    let m = group_element.from_bytes(group_element_bytes);
-    match m {
-        Ok(_) => {},
-        Err(_) => {
-            return (None, None, None, Some(SphinxUnwrapError::ImpossibleError))
-        },
-    };
-
-    let shared_secret = private_key.exp(&group_element);
-    let replay_tag_raw = hash(&group_element.as_array());
+    let mut group_element = PublicKey::from(*group_element_bytes);
+    let shared_secret = private_key.diffie_hellman(&group_element);
+    let replay_tag_raw = hash(group_element.as_bytes());
     let mut replay_tag = [0u8; HASH_SIZE];
     replay_tag[..].copy_from_slice(&replay_tag_raw);
 
     // Derive the various keys required for packet processing.
-    let keys = kdf(&shared_secret);
+    let keys = kdf(shared_secret.as_bytes());
 
     // Validate the Sphinx Packet Header.
     let mac_key = keys.header_mac;
@@ -140,8 +133,8 @@ pub fn sphinx_packet_unwrap(private_key: &PrivateKey, packet: &mut [u8]) -> (Opt
     let mut final_cmds = vec![];
     final_cmds.extend(cmds);
     if maybe_next_hop.is_some() {
-        group_element.blind(&keys.blinding_factor);
-        group_element_bytes.copy_from_slice(&group_element.as_array());
+        group_element.blind(keys.blinding_factor);
+        group_element_bytes.copy_from_slice(group_element.as_bytes());
         routing_info.copy_from_slice(new_routing_info);
         let next_hop = maybe_next_hop.unwrap();
         match next_hop {

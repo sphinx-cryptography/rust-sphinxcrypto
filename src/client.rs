@@ -17,10 +17,13 @@
 //! Client-side Sphinx library functions
 
 extern crate rand;
+extern crate rand_core;
+
+use self::rand_core::CryptoRng;
+use self::rand::Rng;
 
 use subtle::ConstantTimeEq;
-use self::rand::Rng;
-use ecdh_wrapper::{PublicKey, PrivateKey, exp};
+use x25519_dalek_ng::{StaticSecret, PublicKey, x25519};
 
 use super::utils::xor_assign;
 use super::constants::{NODE_ID_SIZE, HEADER_SIZE, MAX_HOPS, ROUTING_INFO_SIZE, PER_HOP_ROUTING_INFO_SIZE,
@@ -68,32 +71,32 @@ impl SprpKey {
 ///
 /// * Returns a header and a vector of keys or an error.
 ///
-pub fn create_header<R: Rng>(rng: &mut R, path: Vec<PathHop>) -> Result<([u8; HEADER_SIZE], Vec<SprpKey>), SphinxHeaderCreateError> {
+pub fn create_header<T: Rng + CryptoRng>(mut rng: T, path: Vec<PathHop>) -> Result<([u8; HEADER_SIZE], Vec<SprpKey>), SphinxHeaderCreateError> {
     let num_hops = path.len();
     if num_hops > MAX_HOPS {
         return Err(SphinxHeaderCreateError::PathTooLongError);
     }
 
     // Derive the key material for each hop.
-    let keypair = PrivateKey::generate(rng)?;
+    let secret_key = StaticSecret::new(&mut rng);
     let mut group_elements: Vec<PublicKey> = vec![];
     let mut keys: Vec<PacketKeys> = vec![];
-    let mut shared_secret: [u8; GROUP_ELEMENT_SIZE] = keypair.exp(&path[0].public_key);
+    let mut shared_secret: [u8; GROUP_ELEMENT_SIZE] = secret_key.diffie_hellman(&path[0].public_key).to_bytes();
     keys.push(kdf(&shared_secret));
-    let mut group_element = keypair.public_key();
-    group_elements.push(group_element);
+    let mut group_element = PublicKey::from(&secret_key);
+    group_elements.push(group_element.clone());
 
     let mut i = 1;
     while i < num_hops {
-        shared_secret = keypair.exp(&path[i].public_key);
+        shared_secret = secret_key.diffie_hellman(&path[i].public_key).to_bytes();
         let mut j = 0;
         while j < i {
-            shared_secret = exp(&shared_secret, &keys[j].blinding_factor);
+            shared_secret = x25519(keys[j].blinding_factor, shared_secret);
             j += 1;
         }
         keys.push(kdf(&shared_secret));
-        group_element.blind(&keys[i-1].blinding_factor);
-        group_elements.push(group_element);
+        group_element.blind(keys[i-1].blinding_factor);
+        group_elements.push(group_element.clone());
         i += 1;
     }
 
@@ -162,7 +165,7 @@ pub fn create_header<R: Rng>(rng: &mut R, path: Vec<PathHop>) -> Result<([u8; HE
         xor_assign(&mut routing_info, ri_keystream[i as usize].as_slice());
         let mut _data = vec![];
         _data.extend(V0_AD.iter());
-        _data.extend(group_elements[i as usize].to_vec());
+        _data.extend(group_elements[i as usize].as_bytes());
         _data.extend(routing_info.to_owned());
         if i > 0 {
             _data.extend(&ri_padding[i as usize - 1]);
@@ -175,7 +178,7 @@ pub fn create_header<R: Rng>(rng: &mut R, path: Vec<PathHop>) -> Result<([u8; HE
     // SPRP key vector.
     let mut _header = vec![];
     _header.extend(V0_AD.iter());
-    _header.extend(group_elements[0].to_vec());
+    _header.extend(group_elements[0].as_bytes());
     _header.extend(routing_info);
     _header.extend(mac.iter());
     let mut header = [0u8; HEADER_SIZE];
@@ -205,7 +208,7 @@ pub fn create_header<R: Rng>(rng: &mut R, path: Vec<PathHop>) -> Result<([u8; HE
 ///
 /// * Returns a packet or an error.
 ///
-pub fn new_packet<R: Rng>(rng: &mut R, path: Vec<PathHop>, payload: Vec<u8>) -> Result<Vec<u8>, SphinxPacketCreateError>{
+pub fn new_packet<T: Rng + CryptoRng>(rng: T, path: Vec<PathHop>, payload: Vec<u8>) -> Result<Vec<u8>, SphinxPacketCreateError>{
     let _path_len = path.len();
     let _header_result = create_header(rng, path);
     if _header_result.is_err() {
@@ -246,7 +249,7 @@ pub fn new_packet<R: Rng>(rng: &mut R, path: Vec<PathHop>, payload: Vec<u8>) -> 
 ///
 /// * Returns a header and a vector of keys or an error.
 ///
-pub fn new_surb<R: Rng>(rng: &mut R, path: Vec<PathHop>) -> Result<([u8; SURB_SIZE], Vec<u8>), SphinxSurbCreateError> {
+pub fn new_surb<T: Rng + CryptoRng>(mut rng: T, path: Vec<PathHop>) -> Result<([u8; SURB_SIZE], Vec<u8>), SphinxSurbCreateError> {
     // Create a random SPRP key + iv for the recipient to use to encrypt
     // the payload when using the SURB.
     let _path_len = path.len();

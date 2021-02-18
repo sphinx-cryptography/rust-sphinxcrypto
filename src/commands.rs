@@ -285,26 +285,24 @@ pub fn parse_routing_commands(b: &[u8]) -> Result<(Vec<RoutingCommand>, Option<R
 
 #[cfg(test)]
 mod tests {
-    extern crate rand;
+    extern crate rand_core;
     extern crate rustc_serialize;
 
     use super::*;
-    use self::rand::Rng;
-    use self::rand::os::OsRng;
-    //use self::rustc_serialize::hex::ToHex;
+
+    use self::rand_core::OsRng;
+    use self::rand_core::RngCore;
 
     use super::super::constants::{NODE_ID_SIZE, RECIPIENT_ID_SIZE, SURB_ID_SIZE};
     use super::super::internal_crypto::{MAC_SIZE};
 
     #[test]
     fn from_bytes_test() {
-        let mut rng = OsRng::new().unwrap();
-
         // next hop command case
         let mut _id = [0u8; NODE_ID_SIZE];
-        rng.fill_bytes(&mut _id);
+        OsRng.fill_bytes(&mut _id);
         let mut _mac = [0u8; MAC_SIZE];
-        rng.fill_bytes(&mut _mac);
+        OsRng.fill_bytes(&mut _mac);
         let cmd = RoutingCommand::NextHop(
             NextHop{
                 id: _id,
@@ -326,7 +324,7 @@ mod tests {
 
         // recipient command case
         let mut _id = [0u8; RECIPIENT_ID_SIZE];
-        rng.fill_bytes(&mut _id);
+        OsRng.fill_bytes(&mut _id);
         let cmd = RoutingCommand::Recipient(
             Recipient{
                 id: _id,
@@ -346,7 +344,7 @@ mod tests {
 
         // surb reply command case
         let mut _id = [0u8; SURB_ID_SIZE];
-        rng.fill_bytes(&mut _id);
+        OsRng.fill_bytes(&mut _id);
         let cmd = RoutingCommand::SURBReply(
             SURBReply {
                 id: _id,
@@ -389,7 +387,6 @@ mod tests {
         let mut raw_commands = vec![];
 
         // delay command
-        let mut rng = OsRng::new().unwrap();
         let delay = RoutingCommand::Delay(
             Delay{
                 delay: 3,
@@ -400,8 +397,8 @@ mod tests {
         // next hop command
         let mut id = [0u8; NODE_ID_SIZE];
         let mut mac = [0u8; MAC_SIZE];
-        rng.fill_bytes(&mut id);
-        rng.fill_bytes(&mut mac);
+        OsRng.fill_bytes(&mut id);
+        OsRng.fill_bytes(&mut mac);
         let next_hop = RoutingCommand::NextHop(
             NextHop{
                 id: id,

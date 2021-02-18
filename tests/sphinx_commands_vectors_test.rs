@@ -1,14 +1,12 @@
 // sphinx_test.rs - sphinx cryptographic packet format tests
 // Copyright (C) 2019  David Stainton.
 
-extern crate rand;
-extern crate sphinxcrypto;
-extern crate ecdh_wrapper;
+extern crate rand_core;
 extern crate rustc_serialize;
+extern crate sphinxcrypto;
 
 #[macro_use]
 extern crate serde_derive;
-
 extern crate serde;
 extern crate serde_json;
 extern crate hex;

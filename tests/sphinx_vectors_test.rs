@@ -2,18 +2,21 @@
 // Copyright (C) 2019  David Stainton.
 
 #[macro_use]
-extern crate serde_derive;
+extern crate arrayref;
 
+#[macro_use]
+extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
 extern crate hex;
+extern crate x25519_dalek_ng;
 extern crate sphinxcrypto;
-extern crate ecdh_wrapper;
+
 
 use std::fs::File;
 use std::io::Read;
 
-use ecdh_wrapper::PrivateKey;
+use x25519_dalek_ng::{StaticSecret};
 
 use sphinxcrypto::server::sphinx_packet_unwrap;
 use sphinxcrypto::commands::RoutingCommand;
@@ -60,7 +63,9 @@ fn sphinx_vector_test() {
         let mut packet: Vec<u8> = Vec::new();
         packet.extend(hex::decode(&tests[i].Packets[0]).unwrap());
         while j < tests[i].Nodes.len() {
-            let node_keypair = PrivateKey::from_bytes(&hex::decode(&tests[i].Nodes[j].PrivateKey).unwrap()).unwrap();
+            let private_key_bytes = hex::decode(&tests[i].Nodes[j].PrivateKey).unwrap();
+            let private_key_array = array_ref![private_key_bytes, 0, 32];
+            let node_keypair = StaticSecret::from(*private_key_array);
             let (payload, _tag, commands, err) = sphinx_packet_unwrap(&node_keypair, &mut packet);
             assert!(err.is_none());
             if j == tests[i].Path.len()-1 {

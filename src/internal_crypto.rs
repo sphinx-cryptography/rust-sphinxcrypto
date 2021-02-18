@@ -24,7 +24,6 @@ extern crate sha2;
 extern crate digest;
 extern crate hmac;
 
-use ecdh_wrapper::KEY_SIZE;
 use self::aes_ctr::Aes128Ctr;
 use self::aes_ctr::stream_cipher::NewStreamCipher;
 use self::aes_ctr::stream_cipher::SyncStreamCipher;
@@ -58,6 +57,8 @@ pub const SPRP_KEY_SIZE: usize = AEZ_KEY_SIZE;
 /// the IV size of the SPRP in bytes.
 /// STREAM_IV_SIZE == AEZ_NONCE_SIZE == 16 bytes
 pub const SPRP_IV_SIZE: usize = AEZ_NONCE_SIZE;
+
+pub const KEY_SIZE: usize = 32;
 
 /// the size of the DH group element in bytes.
 pub const GROUP_ELEMENT_SIZE: usize = KEY_SIZE;
@@ -167,7 +168,7 @@ pub fn sprp_encrypt(key: &[u8; SPRP_KEY_SIZE], iv: &[u8; SPRP_IV_SIZE], msg: Vec
 
 #[cfg(test)]
 mod tests {
-    extern crate rand;
+    extern crate rand_core;
     extern crate hex;
 
     use super::*;
