@@ -16,14 +16,15 @@
 
 #[macro_use]
 extern crate criterion;
+extern crate rand_core;
 extern crate rand;
-extern crate ecdh_wrapper;
+extern crate x25519_dalek_ng;
 extern crate sphinxcrypto;
 
 use criterion::Criterion;
+use rand_core::{CryptoRng, OsRng};
 use self::rand::Rng;
-use self::rand::os::OsRng;
-use ecdh_wrapper::PrivateKey;
+use x25519_dalek_ng::{StaticSecret, PublicKey};
 
 use sphinxcrypto::server::sphinx_packet_unwrap;
 use sphinxcrypto::client::{new_packet, PathHop};
@@ -33,24 +34,20 @@ use sphinxcrypto::commands::{RoutingCommand, Delay, SURBReply, Recipient};
 
 struct NodeParams {
     pub id: [u8; NODE_ID_SIZE],
-    pub private_key: PrivateKey,
+    pub private_key: StaticSecret,
 }
 
-fn os_rng() -> OsRng {
-    OsRng::new().expect("failure to create an OS RNG")
-}
-
-fn new_node<R: Rng>(rng: &mut R) -> NodeParams {
+fn new_node<R: Rng + CryptoRng>(rng: &mut R) -> NodeParams {
     let mut id = [0u8; NODE_ID_SIZE];
     rng.fill_bytes(&mut id);
-    let keypair = PrivateKey::generate(rng).unwrap();
+    let keypair = StaticSecret::new(rng);
     return NodeParams{
         id: id,
         private_key: keypair,
     };
 }
 
-fn new_path_vector<R: Rng>(rng: &mut R, num_hops: u8, is_surb: bool) -> (Vec<NodeParams>, Vec<PathHop>) {
+fn new_path_vector<R: Rng + CryptoRng>(rng: &mut R, num_hops: u8, is_surb: bool) -> (Vec<NodeParams>, Vec<PathHop>) {
     const DELAY_BASE: u32 = 123;
 
     // Generate the keypairs and node identifiers for the "nodes".
@@ -98,7 +95,7 @@ fn new_path_vector<R: Rng>(rng: &mut R, num_hops: u8, is_surb: bool) -> (Vec<Nod
         }
         let hop = PathHop {
             id: nodes[i as usize].id,
-            public_key: nodes[i as usize].private_key.public_key(),
+            public_key: PublicKey::from(&nodes[i as usize].private_key),
             commands: Some(commands),
         };
         path.push(hop);
@@ -116,7 +113,7 @@ fn criterion_sphinx_unwrap_benchmark(c: &mut Criterion) {
     let _s_len = s.len();
     let payload = s.into_bytes();
 
-    let mut r = os_rng();
+    let mut r = OsRng;
     let is_surb = false;
     let _tuple = new_path_vector(&mut r, MAX_HOPS as u8, is_surb);
 
